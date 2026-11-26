@@ -50,11 +50,13 @@ You need a Gemini API key from https://aistudio.google.com/apikey.
 
 ### Other modes and controls
 
-- [ ] **Push to talk**: hold **⌥ Space**, speak, release; JARVIS answers. Holding again while it speaks interrupts it.
+- [ ] **Push to talk**: hold **⌃⌥ Space**, speak, release; JARVIS answers. Holding again while it speaks interrupts it.
 - [ ] **Always listening**: the conversation stays open without the wake word.
-- [ ] In "Hey JARVIS" mode, **⌥ Space** starts a conversation, and pressing it again ends it.
+- [ ] In "Hey JARVIS" mode, **⌃⌥ Space** starts a conversation, and pressing it again ends it.
 - [ ] The mic button (and menu bar › Mute) releases the microphone: the orange microphone indicator in the menu bar disappears.
-- [ ] If another app already uses ⌥ Space, a notice says the shortcut is unavailable.
+- [ ] Pressing ⌃⌥ Space does not open Gemini or ChatGPT (both claim ⌥ Space by default).
+- [ ] Changing **Voice shortcut** in Settings takes effect at once: the old shortcut stops working, the new one works and the hint shows it; the choice survives a restart.
+- [ ] If the chosen shortcut cannot be registered, Settings shows the error and keeps the previous shortcut.
 
 ### Measurements (for the Electron vs Tauri decision)
 

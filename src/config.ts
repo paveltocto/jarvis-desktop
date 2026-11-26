@@ -3,6 +3,8 @@
  * settings store in phase 2.
  */
 
+import type { Os } from "./platform";
+
 export type ActivationMode = "wake_word" | "push_to_talk" | "always_on";
 
 export interface Settings {
@@ -14,6 +16,32 @@ export interface Settings {
   liveModel: string;
   /** Close the session after this much silence (wake word and push-to-talk modes). */
   inactivityTimeoutMs: number;
+  /** Global push-to-talk / wake shortcut, one of `VOICE_SHORTCUTS`. */
+  voiceShortcut: string;
+}
+
+/**
+ * Shortcuts offered in Settings, as Tauri accelerators. Must match `PRESETS`
+ * in `src-tauri/src/shell.rs`. Option+Space is not the default because
+ * Gemini and ChatGPT for Mac claim it, and macOS fires every app registered
+ * for the same combination.
+ */
+export const VOICE_SHORTCUTS = [
+  { accelerator: "Control+Alt+Space", mac: "⌃⌥ Space", other: "Ctrl+Alt+Space" },
+  { accelerator: "Alt+Space", mac: "⌥ Space", other: "Alt+Space" },
+  { accelerator: "Shift+Alt+Space", mac: "⇧⌥ Space", other: "Shift+Alt+Space" },
+  { accelerator: "Control+Shift+Space", mac: "⌃⇧ Space", other: "Ctrl+Shift+Space" },
+  { accelerator: "CommandOrControl+Shift+J", mac: "⌘⇧ J", other: "Ctrl+Shift+J" },
+] as const;
+
+/** Must match `DEFAULT_VOICE_SHORTCUT` in `src-tauri/src/shell.rs`. */
+export const DEFAULT_VOICE_SHORTCUT = "Control+Alt+Space";
+
+/** Human-readable label for a shortcut accelerator on the given OS. */
+export function shortcutLabel(accelerator: string, os: Os): string {
+  const preset = VOICE_SHORTCUTS.find((item) => item.accelerator === accelerator);
+  if (!preset) return accelerator;
+  return os === "macos" ? preset.mac : preset.other;
 }
 
 /** Default model carried over from the legacy app. */
@@ -37,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voice: "Aoede",
   liveModel: DEFAULT_LIVE_MODEL,
   inactivityTimeoutMs: 12_000,
+  voiceShortcut: DEFAULT_VOICE_SHORTCUT,
 };
 
 const STORAGE_KEY = "jarvis.settings.v1";
@@ -61,6 +90,9 @@ export function parseSettings(raw: unknown): Settings {
   }
   if (typeof value.inactivityTimeoutMs === "number" && value.inactivityTimeoutMs >= 3_000) {
     settings.inactivityTimeoutMs = Math.min(120_000, value.inactivityTimeoutMs);
+  }
+  if (VOICE_SHORTCUTS.some((item) => item.accelerator === value.voiceShortcut)) {
+    settings.voiceShortcut = value.voiceShortcut as string;
   }
   return settings;
 }

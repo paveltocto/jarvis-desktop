@@ -15,7 +15,7 @@ A voice-first desktop assistant inspired by JARVIS, built with [Tauri v2](https:
 ## What works today
 
 - Floating holographic orb window, menu bar icon, single instance.
-- Voice conversation with Gemini Live in three modes: **"Hey JARVIS"** (local wake word, nothing is sent before it), **push to talk** (hold ⌥ Space) and **always listening**.
+- Voice conversation with Gemini Live in three modes: **"Hey JARVIS"** (local wake word, nothing is sent before it), **push to talk** (hold ⌃⌥ Space by default, configurable in Settings) and **always listening**.
 - Tools: open apps, current weather, current time.
 - Gemini API key stored in the macOS Keychain.
 

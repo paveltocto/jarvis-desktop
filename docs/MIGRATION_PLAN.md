@@ -98,7 +98,7 @@ Legacy behaviour: the microphone is always open and any sound above the noise fl
 New modes:
 
 1. **"Hey JARVIS" (default).** Audio is processed locally only. On detection: confirmation sound, open the Gemini Live session and stream audio. After N seconds of silence, return to idle and close the session (saves API cost and protects privacy).
-2. **Push-to-talk** with a configurable shortcut (default `⌥ Space`; macOS keyboards have no Insert key).
+2. **Push-to-talk** with a configurable shortcut (default `⌃⌥ Space`, picked in Settings; `⌥ Space` collides with Gemini and ChatGPT for Mac; macOS keyboards have no Insert key).
 3. **Always listening**, equivalent to the legacy behaviour, with a noise gate.
 
 While JARVIS speaks, microphone streaming pauses (as in legacy). To allow barge-in later, evaluate echo cancellation (`webrtc-audio-processing`).
@@ -178,7 +178,7 @@ What was built and verified (on Linux CI-like conditions, without a microphone o
 - **Voice controller**: state machine (`off`, `idle`, `connecting`, `listening`, `speaking`) for the three activation modes. Audio spoken while the session connects is buffered and sent, so "Hey JARVIS, open Safari" works in one breath.
 - **Gemini Live**: the SDK (3.x) defaults to API version `v1`, where the Live WebSocket returns HTTP 404; the app pins `v1beta`. Verified against the real endpoint: an invalid key is rejected with a clear message.
 - **Tools**: `get_current_time`, `open_app` (macOS `open -a`), `weather_report` (wttr.in).
-- **Shell**: transparent always-on-top window, tray menu, global shortcut (`Alt+Space`, press and release events), single instance, API key in the Keychain, microphone onboarding with a link to System Settings.
+- **Shell**: transparent always-on-top window, tray menu, global shortcut (default `Control+Alt+Space`, configurable, press and release events), single instance, API key in the Keychain, microphone onboarding with a link to System Settings.
 
 Known limitations, to check on a Mac (see [TESTING_ON_MAC.md](TESTING_ON_MAC.md)):
 

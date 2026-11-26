@@ -1,7 +1,16 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { audioBackend, errorMessage, events, secrets, system } from "./backend";
-import { type ActivationMode, loadSettings, saveSettings, type Settings, VOICES } from "./config";
+import { audioBackend, errorMessage, events, secrets, shell, system } from "./backend";
+import {
+  type ActivationMode,
+  DEFAULT_VOICE_SHORTCUT,
+  loadSettings,
+  type Settings,
+  saveSettings,
+  shortcutLabel,
+  VOICE_SHORTCUTS,
+  VOICES,
+} from "./config";
 import { Orb } from "./orb/orb";
 import { getPlatformInfo, type PlatformInfo } from "./platform";
 import { createToolRegistry } from "./tools";
@@ -11,8 +20,6 @@ import { createGeminiSessionFactory } from "./voice/gemini-live";
 import { toFunctionDeclarations } from "./voice/schema";
 import { PcmSpeaker } from "./voice/speaker";
 import { buildSystemInstruction } from "./voice/system-prompt";
-
-const SHORTCUT_LABEL = "⌥ Space";
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -37,6 +44,7 @@ const ui = {
   apiKey: element<HTMLInputElement>("api-key"),
   threshold: element<HTMLInputElement>("threshold"),
   voice: element<HTMLSelectElement>("voice"),
+  voiceShortcut: element<HTMLSelectElement>("voice-shortcut"),
   model: element<HTMLInputElement>("model"),
   removeKey: element<HTMLButtonElement>("remove-key"),
   closeSettings: element<HTMLButtonElement>("close-settings"),
@@ -50,12 +58,12 @@ const STATUS: Record<VoiceSnapshot["state"], string> = {
   speaking: "Speaking",
 };
 
-function idleHint(mode: ActivationMode): string {
+function idleHint(mode: ActivationMode, shortcut: string): string {
   switch (mode) {
     case "wake_word":
-      return `Say “Hey JARVIS” or press ${SHORTCUT_LABEL}`;
+      return `Say “Hey JARVIS” or press ${shortcut}`;
     case "push_to_talk":
-      return `Hold ${SHORTCUT_LABEL} and speak`;
+      return `Hold ${shortcut} and speak`;
     case "always_on":
       return "Reconnecting…";
   }
@@ -93,6 +101,8 @@ class App {
     this.#bindUi();
     await this.#bindBackendEvents();
     this.#platform = await getPlatformInfo();
+    this.#fillShortcutOptions();
+    await this.#applyStoredShortcut();
 
     try {
       this.#apiKey = await secrets.get("gemini_api_key");
@@ -107,6 +117,28 @@ class App {
       return;
     }
     await this.#startVoice();
+  }
+
+  #fillShortcutOptions(): void {
+    ui.voiceShortcut.replaceChildren(
+      ...VOICE_SHORTCUTS.map(
+        (item) => new Option(shortcutLabel(item.accelerator, this.#platform.os), item.accelerator),
+      ),
+    );
+  }
+
+  /** The backend registers the default at startup; switch to the stored choice. */
+  async #applyStoredShortcut(): Promise<void> {
+    if (this.#settings.voiceShortcut === DEFAULT_VOICE_SHORTCUT) return;
+    try {
+      await shell.setVoiceShortcut(this.#settings.voiceShortcut);
+    } catch (error) {
+      showNotice(
+        `${errorMessage(error)}. Using ${shortcutLabel(DEFAULT_VOICE_SHORTCUT, this.#platform.os)} instead.`,
+      );
+      this.#settings = { ...this.#settings, voiceShortcut: DEFAULT_VOICE_SHORTCUT };
+      saveSettings(this.#settings);
+    }
   }
 
   #toolContext(): ToolContext {
@@ -169,7 +201,7 @@ class App {
     ui.status.textContent = this.#muted ? "Muted" : STATUS[snapshot.state];
     ui.hint.textContent =
       snapshot.state === "idle"
-        ? idleHint(snapshot.mode)
+        ? idleHint(snapshot.mode, shortcutLabel(this.#settings.voiceShortcut, this.#platform.os))
         : snapshot.state === "listening" && snapshot.mode === "push_to_talk"
           ? "Release to send"
           : "";
@@ -252,6 +284,7 @@ class App {
       : "Paste your key";
     ui.threshold.value = String(this.#settings.wakeWordThreshold);
     ui.voice.value = this.#settings.voice;
+    ui.voiceShortcut.value = this.#settings.voiceShortcut;
     ui.model.value = this.#settings.liveModel;
     ui.removeKey.hidden = !this.#apiKey;
     ui.closeSettings.hidden = !this.#apiKey;
@@ -280,10 +313,22 @@ class App {
       return;
     }
     const previous = this.#settings;
+    const voiceShortcut = ui.voiceShortcut.value;
+    if (voiceShortcut !== previous.voiceShortcut) {
+      try {
+        await shell.setVoiceShortcut(voiceShortcut);
+      } catch (error) {
+        ui.voiceShortcut.value = previous.voiceShortcut;
+        ui.settingsError.textContent = errorMessage(error);
+        ui.settingsError.hidden = false;
+        return;
+      }
+    }
     this.#settings = {
       ...previous,
       wakeWordThreshold: Number(ui.threshold.value),
       voice: ui.voice.value,
+      voiceShortcut,
       liveModel: ui.model.value.trim() || previous.liveModel,
     };
     saveSettings(this.#settings);
@@ -298,6 +343,8 @@ class App {
       await this.#startVoice();
     } else {
       await this.#controller.setWakeWordThreshold(this.#settings.wakeWordThreshold);
+      // Refresh the idle hint in case the shortcut changed.
+      this.#render(this.#controller.snapshot);
     }
   }
 

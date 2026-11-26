@@ -20,6 +20,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(audio::AudioService::new())
+        .manage(shell::VoiceShortcut::default())
         .setup(|app| {
             shell::setup_tray(app)?;
             shell::register_voice_shortcut(app.handle());
@@ -37,6 +38,7 @@ pub fn run() {
             commands::secret_get,
             commands::secret_set,
             commands::secret_delete,
+            commands::voice_shortcut_set,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the JARVIS application");

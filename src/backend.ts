@@ -41,6 +41,12 @@ export const secrets = {
   delete: (name: SecretName) => invoke<undefined>("secret_delete", { name }),
 };
 
+export const shell = {
+  /** Replaces the global voice shortcut; rejects and keeps the old one on failure. */
+  setVoiceShortcut: (accelerator: string) =>
+    invoke<undefined>("voice_shortcut_set", { accelerator }),
+};
+
 export const events = {
   audioLevel: (handler: (rms: number) => void): Promise<UnlistenFn> =>
     listen<number>("audio:level", (event) => handler(event.payload)),

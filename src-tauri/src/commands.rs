@@ -8,7 +8,7 @@
 use crate::audio::{AudioError, AudioEvents, AudioService, InputDeviceInfo};
 use crate::platform::{self, PlatformError, PlatformInfo, PrivacyPane};
 use crate::secrets::{self, SecretError};
-use crate::shell::events;
+use crate::shell::{self, ShortcutError, events};
 use std::sync::Arc;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, State};
@@ -93,4 +93,11 @@ pub async fn secret_set(name: String, value: String) -> Result<(), SecretError> 
 #[tauri::command]
 pub async fn secret_delete(name: String) -> Result<(), SecretError> {
     secrets::delete(&name)
+}
+
+/// Replaces the global voice shortcut. Synchronous so it runs on the main
+/// thread, which macOS requires for hotkey registration.
+#[tauri::command]
+pub fn voice_shortcut_set(app: AppHandle, accelerator: String) -> Result<(), ShortcutError> {
+    shell::set_voice_shortcut(&app, &accelerator)
 }
