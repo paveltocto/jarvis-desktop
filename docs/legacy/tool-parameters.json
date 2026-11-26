@@ -1,0 +1,1857 @@
+{
+  "source": "paveltocto/jarvis-ai main.py TOOL_DECLARATIONS (commit 027a357)",
+  "note": "Parameter schemas of the 66 legacy tools, extracted automatically. Descriptions were removed because they were written in Spanish; each tool gets a new English description when it is ported. Reference data only: nothing imports this file.",
+  "tools": [
+    {
+      "name": "activate_protocol",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "protocol_name": {
+            "type": "STRING"
+          }
+        }
+      },
+      "legacyLine": 474
+    },
+    {
+      "name": "show_hologram",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "url": {
+            "type": "STRING"
+          },
+          "html": {
+            "type": "STRING"
+          }
+        }
+      },
+      "legacyLine": 484
+    },
+    {
+      "name": "get_current_time",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {}
+      },
+      "legacyLine": 495
+    },
+    {
+      "name": "camera_bus",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 507
+    },
+    {
+      "name": "jarvis_ui_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "widget": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 524
+    },
+    {
+      "name": "open_app",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "app_name": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "app_name"
+        ]
+      },
+      "legacyLine": 547
+    },
+    {
+      "name": "window_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "sub_action": {
+            "type": "STRING"
+          },
+          "target": {
+            "type": "STRING"
+          },
+          "monitor": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "sub_action",
+          "target"
+        ]
+      },
+      "legacyLine": 565
+    },
+    {
+      "name": "app_macro",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "app": {
+            "type": "STRING"
+          },
+          "action": {
+            "type": "STRING"
+          },
+          "font_name": {
+            "type": "STRING"
+          },
+          "font_size": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "app",
+          "action"
+        ]
+      },
+      "legacyLine": 578
+    },
+    {
+      "name": "web_search",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "query": {
+            "type": "STRING"
+          },
+          "mode": {
+            "type": "STRING"
+          },
+          "items": {
+            "type": "ARRAY",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "aspect": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "legacyLine": 592
+    },
+    {
+      "name": "weather_report",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "city": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "city"
+        ]
+      },
+      "legacyLine": 606
+    },
+    {
+      "name": "whatsapp",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "receiver": {
+            "type": "STRING"
+          },
+          "message": {
+            "type": "STRING"
+          },
+          "image_path": {
+            "type": "STRING"
+          },
+          "caption": {
+            "type": "STRING"
+          },
+          "count": {
+            "type": "INTEGER"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "phone": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 617
+    },
+    {
+      "name": "send_message",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "receiver": {
+            "type": "STRING"
+          },
+          "message_text": {
+            "type": "STRING"
+          },
+          "platform": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "receiver",
+          "message_text",
+          "platform"
+        ]
+      },
+      "legacyLine": 642
+    },
+    {
+      "name": "reminder",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "date": {
+            "type": "STRING"
+          },
+          "time": {
+            "type": "STRING"
+          },
+          "message": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "date",
+          "time",
+          "message"
+        ]
+      },
+      "legacyLine": 655
+    },
+    {
+      "name": "youtube_video",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "save": {
+            "type": "BOOLEAN"
+          },
+          "region": {
+            "type": "STRING"
+          },
+          "url": {
+            "type": "STRING"
+          }
+        },
+        "required": []
+      },
+      "legacyLine": 668
+    },
+    {
+      "name": "screen_process",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "angle": {
+            "type": "STRING"
+          },
+          "text": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "legacyLine": 686
+    },
+    {
+      "name": "computer_settings",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          }
+        },
+        "required": []
+      },
+      "legacyLine": 704
+    },
+    {
+      "name": "browser_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "url": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "direction": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 724
+    },
+    {
+      "name": "visual_click",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "element_description": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "element_description"
+        ]
+      },
+      "legacyLine": 742
+    },
+    {
+      "name": "sleep_mode",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {}
+      },
+      "legacyLine": 753
+    },
+    {
+      "name": "file_controller",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "path": {
+            "type": "STRING"
+          },
+          "destination": {
+            "type": "STRING"
+          },
+          "new_name": {
+            "type": "STRING"
+          },
+          "content": {
+            "type": "STRING"
+          },
+          "filename": {
+            "type": "STRING"
+          },
+          "folder": {
+            "type": "STRING"
+          },
+          "filepath": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "extension": {
+            "type": "STRING"
+          },
+          "count": {
+            "type": "INTEGER"
+          },
+          "old_text": {
+            "type": "STRING"
+          },
+          "new_text": {
+            "type": "STRING"
+          },
+          "mode": {
+            "type": "STRING"
+          },
+          "confirm": {
+            "type": "BOOLEAN"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 761
+    },
+    {
+      "name": "desktop_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "path": {
+            "type": "STRING"
+          },
+          "url": {
+            "type": "STRING"
+          },
+          "mode": {
+            "type": "STRING"
+          },
+          "task": {
+            "type": "STRING"
+          },
+          "search_name": {
+            "type": "STRING"
+          },
+          "search_path": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 794
+    },
+    {
+      "name": "code_helper",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "language": {
+            "type": "STRING"
+          },
+          "output_path": {
+            "type": "STRING"
+          },
+          "file_path": {
+            "type": "STRING"
+          },
+          "code": {
+            "type": "STRING"
+          },
+          "args": {
+            "type": "STRING"
+          },
+          "timeout": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 815
+    },
+    {
+      "name": "dev_agent",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "language": {
+            "type": "STRING"
+          },
+          "project_name": {
+            "type": "STRING"
+          },
+          "timeout": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "description"
+        ]
+      },
+      "legacyLine": 833
+    },
+    {
+      "name": "agent_task",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "goal": {
+            "type": "STRING"
+          },
+          "priority": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "goal"
+        ]
+      },
+      "legacyLine": 847
+    },
+    {
+      "name": "computer_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "text": {
+            "type": "STRING"
+          },
+          "x": {
+            "type": "INTEGER"
+          },
+          "y": {
+            "type": "INTEGER"
+          },
+          "keys": {
+            "type": "STRING"
+          },
+          "key": {
+            "type": "STRING"
+          },
+          "direction": {
+            "type": "STRING"
+          },
+          "amount": {
+            "type": "INTEGER"
+          },
+          "seconds": {
+            "type": "NUMBER"
+          },
+          "title": {
+            "type": "STRING"
+          },
+          "type": {
+            "type": "STRING"
+          },
+          "field": {
+            "type": "STRING"
+          },
+          "clear_first": {
+            "type": "BOOLEAN"
+          },
+          "path": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 863
+    },
+    {
+      "name": "game_updater",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "platform": {
+            "type": "STRING"
+          },
+          "game_name": {
+            "type": "STRING"
+          },
+          "app_id": {
+            "type": "STRING"
+          },
+          "hour": {
+            "type": "INTEGER"
+          },
+          "minute": {
+            "type": "INTEGER"
+          },
+          "shutdown_when_done": {
+            "type": "BOOLEAN"
+          }
+        },
+        "required": []
+      },
+      "legacyLine": 888
+    },
+    {
+      "name": "flight_finder",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "origin": {
+            "type": "STRING"
+          },
+          "destination": {
+            "type": "STRING"
+          },
+          "date": {
+            "type": "STRING"
+          },
+          "return_date": {
+            "type": "STRING"
+          },
+          "passengers": {
+            "type": "INTEGER"
+          },
+          "cabin": {
+            "type": "STRING"
+          },
+          "save": {
+            "type": "BOOLEAN"
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "date"
+        ]
+      },
+      "legacyLine": 911
+    },
+    {
+      "name": "shutdown_jarvis",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {}
+      },
+      "legacyLine": 928
+    },
+    {
+      "name": "file_processor",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "file_path": {
+            "type": "STRING"
+          },
+          "action": {
+            "type": "STRING"
+          },
+          "instruction": {
+            "type": "STRING"
+          },
+          "format": {
+            "type": "STRING"
+          },
+          "width": {
+            "type": "INTEGER"
+          },
+          "height": {
+            "type": "INTEGER"
+          },
+          "scale": {
+            "type": "NUMBER"
+          },
+          "quality": {
+            "type": "INTEGER"
+          },
+          "start": {
+            "type": "STRING"
+          },
+          "end": {
+            "type": "STRING"
+          },
+          "timestamp": {
+            "type": "STRING"
+          },
+          "column": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          },
+          "condition": {
+            "type": "STRING"
+          },
+          "ascending": {
+            "type": "BOOLEAN"
+          },
+          "save": {
+            "type": "BOOLEAN"
+          },
+          "destination": {
+            "type": "STRING"
+          }
+        },
+        "required": []
+      },
+      "legacyLine": 941
+    },
+    {
+      "name": "google_calendar",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "summary": {
+            "type": "STRING"
+          },
+          "start": {
+            "type": "STRING"
+          },
+          "end": {
+            "type": "STRING"
+          },
+          "location": {
+            "type": "STRING"
+          },
+          "event_id": {
+            "type": "STRING"
+          },
+          "days_ahead": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1007
+    },
+    {
+      "name": "spotify_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "type": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1033
+    },
+    {
+      "name": "rgb_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "color": {
+            "type": "STRING"
+          },
+          "brightness": {
+            "type": "INTEGER"
+          },
+          "device": {
+            "type": "STRING"
+          },
+          "effect": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1052
+    },
+    {
+      "name": "scheduler",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "frequency": {
+            "type": "STRING"
+          },
+          "hour": {
+            "type": "INTEGER"
+          },
+          "minute": {
+            "type": "INTEGER"
+          },
+          "weekday": {
+            "type": "STRING"
+          },
+          "interval_minutes": {
+            "type": "INTEGER"
+          },
+          "task_action": {
+            "type": "STRING"
+          },
+          "task_parameters": {
+            "type": "OBJECT"
+          },
+          "task_id": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1071
+    },
+    {
+      "name": "google_drive",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "folder_id": {
+            "type": "STRING"
+          },
+          "file_id": {
+            "type": "STRING"
+          },
+          "path": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "destination": {
+            "type": "STRING"
+          },
+          "email": {
+            "type": "STRING"
+          },
+          "role": {
+            "type": "STRING"
+          },
+          "confirm": {
+            "type": "BOOLEAN"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1095
+    },
+    {
+      "name": "gmail_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "count": {
+            "type": "INTEGER"
+          },
+          "message_id": {
+            "type": "STRING"
+          },
+          "to": {
+            "type": "STRING"
+          },
+          "subject": {
+            "type": "STRING"
+          },
+          "body": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "confirm": {
+            "type": "BOOLEAN"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1118
+    },
+    {
+      "name": "google_maps",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "origin": {
+            "type": "STRING"
+          },
+          "destination": {
+            "type": "STRING"
+          },
+          "mode": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1139
+    },
+    {
+      "name": "rules_engine",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "rule_id": {
+            "type": "STRING"
+          },
+          "condition": {
+            "type": "OBJECT"
+          },
+          "action_def": {
+            "type": "OBJECT"
+          },
+          "message": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1159
+    },
+    {
+      "name": "user_profile",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "key": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "note": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1202
+    },
+    {
+      "name": "goals",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "goal_id": {
+            "type": "STRING"
+          },
+          "title": {
+            "type": "STRING"
+          },
+          "deadline": {
+            "type": "STRING"
+          },
+          "progress": {
+            "type": "INTEGER"
+          },
+          "steps": {
+            "type": "ARRAY",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "step": {
+            "type": "STRING"
+          },
+          "step_index": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1221
+    },
+    {
+      "name": "git_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "repo_path": {
+            "type": "STRING"
+          },
+          "message": {
+            "type": "STRING"
+          },
+          "branch_name": {
+            "type": "STRING"
+          },
+          "remote": {
+            "type": "STRING"
+          },
+          "n": {
+            "type": "INTEGER"
+          },
+          "file": {
+            "type": "STRING"
+          },
+          "staged": {
+            "type": "BOOLEAN"
+          },
+          "add_all": {
+            "type": "BOOLEAN"
+          },
+          "files": {
+            "type": "ARRAY",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "sub": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action",
+          "repo_path"
+        ]
+      },
+      "legacyLine": 1245
+    },
+    {
+      "name": "codebase",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "path": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "project": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "symbol": {
+            "type": "STRING"
+          },
+          "file_path": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1270
+    },
+    {
+      "name": "knowledge_base",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "title": {
+            "type": "STRING"
+          },
+          "content": {
+            "type": "STRING"
+          },
+          "type": {
+            "type": "STRING"
+          },
+          "tags": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "entry_id": {
+            "type": "STRING"
+          },
+          "path": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1292
+    },
+    {
+      "name": "social_media",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "platform": {
+            "type": "STRING"
+          },
+          "action": {
+            "type": "STRING"
+          },
+          "text": {
+            "type": "STRING"
+          },
+          "content": {
+            "type": "STRING"
+          },
+          "tweet_id": {
+            "type": "STRING"
+          },
+          "media_id": {
+            "type": "STRING"
+          },
+          "username": {
+            "type": "STRING"
+          },
+          "receiver": {
+            "type": "STRING"
+          },
+          "image_path": {
+            "type": "STRING"
+          },
+          "video_path": {
+            "type": "STRING"
+          },
+          "caption": {
+            "type": "STRING"
+          },
+          "query": {
+            "type": "STRING"
+          },
+          "count": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "platform",
+          "action"
+        ]
+      },
+      "legacyLine": 1315
+    },
+    {
+      "name": "windows_settings",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          },
+          "value2": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "hive": {
+            "type": "STRING"
+          },
+          "key": {
+            "type": "STRING"
+          },
+          "reg_name": {
+            "type": "STRING"
+          },
+          "reg_type": {
+            "type": "STRING"
+          },
+          "path": {
+            "type": "STRING"
+          },
+          "monitor": {
+            "type": "INTEGER"
+          },
+          "width": {
+            "type": "INTEGER"
+          },
+          "height": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1352
+    },
+    {
+      "name": "save_memory",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "category": {
+            "type": "STRING"
+          },
+          "key": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "category",
+          "key",
+          "value"
+        ]
+      },
+      "legacyLine": 1428
+    },
+    {
+      "name": "image_generation",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "prompt": {
+            "type": "STRING"
+          },
+          "count": {
+            "type": "INTEGER"
+          },
+          "aspect_ratio": {
+            "type": "STRING"
+          },
+          "save_path": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      },
+      "legacyLine": 1458
+    },
+    {
+      "name": "smart_home",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "device": {
+            "type": "STRING"
+          },
+          "color": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "INTEGER"
+          },
+          "brightness": {
+            "type": "INTEGER"
+          },
+          "scene": {
+            "type": "STRING"
+          },
+          "protocol": {
+            "type": "STRING"
+          },
+          "group": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1478
+    },
+    {
+      "name": "system_monitor",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "sort_by": {
+            "type": "STRING"
+          },
+          "count": {
+            "type": "INTEGER"
+          },
+          "name": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1502
+    },
+    {
+      "name": "document_creator",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "title": {
+            "type": "STRING"
+          },
+          "content": {
+            "type": "STRING"
+          },
+          "sheets": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "name": {
+                  "type": "STRING"
+                },
+                "headers": {
+                  "type": "ARRAY",
+                  "items": {
+                    "type": "STRING"
+                  }
+                },
+                "rows": {
+                  "type": "ARRAY",
+                  "items": {
+                    "type": "ARRAY",
+                    "items": {
+                      "type": "STRING"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "save_path": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action",
+          "title"
+        ]
+      },
+      "legacyLine": 1521
+    },
+    {
+      "name": "tiktok_analyzer",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "profile_url": {
+            "type": "STRING"
+          },
+          "max_videos": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "profile_url"
+        ]
+      },
+      "legacyLine": 1580
+    },
+    {
+      "name": "arca_invoice",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "tipo": {
+            "type": "INTEGER"
+          },
+          "razon_social": {
+            "type": "STRING"
+          },
+          "cuit_receptor": {
+            "type": "STRING"
+          },
+          "domicilio": {
+            "type": "STRING"
+          },
+          "detalle": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "descripcion": {
+                  "type": "STRING"
+                },
+                "precio": {
+                  "type": "NUMBER"
+                },
+                "cantidad": {
+                  "type": "INTEGER"
+                }
+              }
+            }
+          },
+          "importe_neto": {
+            "type": "NUMBER"
+          },
+          "importe_iva": {
+            "type": "NUMBER"
+          },
+          "iva_pct": {
+            "type": "NUMBER"
+          },
+          "fecha": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1598
+    },
+    {
+      "name": "accessibility",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "text": {
+            "type": "STRING"
+          },
+          "format": {
+            "type": "STRING"
+          },
+          "name": {
+            "type": "STRING"
+          },
+          "setting": {
+            "type": "STRING"
+          },
+          "value": {
+            "type": "STRING"
+          },
+          "level": {
+            "type": "NUMBER"
+          },
+          "stress_level": {
+            "type": "NUMBER"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1625
+    },
+    {
+      "name": "screen_vision",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "question": {
+            "type": "STRING"
+          },
+          "monitor": {
+            "type": "INTEGER"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1667
+    },
+    {
+      "name": "morning_brief",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "force": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "legacyLine": 1697
+    },
+    {
+      "name": "vision_guardian",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "status",
+              "enable",
+              "disable",
+              "check_now",
+              "set_interval"
+            ]
+          },
+          "seconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1716
+    },
+    {
+      "name": "accessibility_overlay",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1741
+    },
+    {
+      "name": "openrouter_agent",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "query": {
+            "type": "STRING"
+          },
+          "model": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "legacyLine": 1760
+    },
+    {
+      "name": "terminal_agent",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "command": {
+            "type": "STRING"
+          },
+          "shell": {
+            "type": "STRING"
+          },
+          "timeout": {
+            "type": "INTEGER"
+          },
+          "working_directory": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "legacyLine": 1783
+    },
+    {
+      "name": "native_ui",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "window_title": {
+            "type": "STRING"
+          },
+          "text": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1818
+    },
+    {
+      "name": "tool_creator",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "tool_name": {
+            "type": "STRING"
+          },
+          "parameters_schema": {
+            "type": "STRING"
+          },
+          "python_code": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "tool_name",
+          "description",
+          "parameters_schema",
+          "python_code"
+        ]
+      },
+      "legacyLine": 1844
+    },
+    {
+      "name": "proactive_automation",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "rule_name": {
+            "type": "STRING"
+          },
+          "trigger": {
+            "type": "STRING"
+          },
+          "trigger_value": {
+            "type": "STRING"
+          },
+          "action_to_take": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1874
+    },
+    {
+      "name": "unified_communications",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "platform": {
+            "type": "STRING"
+          },
+          "action": {
+            "type": "STRING"
+          },
+          "recipient": {
+            "type": "STRING"
+          },
+          "message": {
+            "type": "STRING"
+          },
+          "subject": {
+            "type": "STRING"
+          },
+          "token": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "platform",
+          "action",
+          "recipient",
+          "message"
+        ]
+      },
+      "legacyLine": 1907
+    },
+    {
+      "name": "smart_file_organizer",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "directory": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1944
+    },
+    {
+      "name": "contextual_control",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "volume": {
+            "type": "INTEGER"
+          },
+          "brightness": {
+            "type": "INTEGER"
+          },
+          "power_plan": {
+            "type": "STRING"
+          },
+          "state": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 1965
+    },
+    {
+      "name": "auto_programmer",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "tool_name": {
+            "type": "STRING"
+          },
+          "parameters_schema": {
+            "type": "STRING"
+          },
+          "python_code": {
+            "type": "STRING"
+          },
+          "test_parameters": {
+            "type": "OBJECT"
+          }
+        },
+        "required": [
+          "action",
+          "tool_name"
+        ]
+      },
+      "legacyLine": 1998
+    },
+    {
+      "name": "self_edit",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "action": {
+            "type": "STRING"
+          },
+          "file": {
+            "type": "STRING"
+          },
+          "target": {
+            "type": "STRING"
+          },
+          "replacement": {
+            "type": "STRING"
+          },
+          "content": {
+            "type": "STRING"
+          },
+          "directory": {
+            "type": "STRING"
+          },
+          "backup_name": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "legacyLine": 2036
+    }
+  ]
+}

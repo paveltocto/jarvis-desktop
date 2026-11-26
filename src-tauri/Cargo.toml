@@ -1,0 +1,36 @@
+[package]
+name = "jarvis-desktop"
+version = "0.1.0"
+description = "JARVIS desktop assistant"
+edition = "2024"
+publish = false
+
+[lib]
+# The `_lib` suffix avoids a name clash between the lib and the bin on Windows.
+# See https://github.com/rust-lang/cargo/issues/8519
+name = "jarvis_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+
+# See https://v2.tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
