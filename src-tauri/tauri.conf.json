@@ -14,13 +14,23 @@
       {
         "label": "main",
         "title": "JARVIS",
-        "width": 900,
-        "height": 640
+        "width": 380,
+        "height": 460,
+        "minWidth": 300,
+        "minHeight": 360,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "shadow": false,
+        "resizable": true,
+        "center": true,
+        "visible": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
-    }
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://wttr.in"
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
@@ -35,7 +45,8 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "11.0"
+      "minimumSystemVersion": "11.0",
+      "entitlements": "./Entitlements.plist"
     }
   }
 }

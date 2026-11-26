@@ -1,42 +1,300 @@
 :root {
-  --bg: #0b0d10;
-  --fg: #e8e6df;
-  --muted: #9a978d;
-  --accent: #e0b84c;
+  --amber: #f59e0b;
+  --amber-soft: #fde68a;
+  --amber-dim: rgba(245, 158, 11, 0.35);
+  --glass: rgba(12, 10, 4, 0.82);
+  --border: rgba(245, 158, 11, 0.28);
+  --text: #f5f1e6;
+  --muted: #a8a196;
+  --danger: #ff5c7a;
   color-scheme: dark;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
+  height: 100%;
+  /* The window is transparent; only the HUD panel is drawn. */
+  background: transparent;
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
 }
 
-.shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 16px;
+.hud {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-h1 {
-  color: var(--accent);
-  letter-spacing: 0.3em;
-  margin-bottom: 4px;
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 0 16px;
+  cursor: grab;
 }
 
-.subtitle,
-dt {
+.brand {
+  color: var(--amber);
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  font-size: 12px;
+}
+
+.titlebar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 16px;
+}
+
+.view[hidden] {
+  display: none;
+}
+
+.orb {
+  flex: 1;
+  min-height: 160px;
+  width: 100%;
+}
+
+.status {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--amber-soft);
+}
+
+.hint {
+  margin: 4px 0 0;
+  min-height: 1.4em;
+  text-align: center;
   color: var(--muted);
 }
 
-dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
+.notice {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 92, 122, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 92, 122, 0.08);
+  user-select: text;
 }
 
-dd {
+.notice[hidden] {
+  display: none;
+}
+
+.notice p {
   margin: 0;
+}
+
+.notice .text-button {
+  margin-top: 6px;
+  padding-left: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.mic-button {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--amber-dim);
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.mic-button svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.mic-button .icon-mic-off,
+.mic-button[aria-pressed="true"] .icon-mic {
+  display: none;
+}
+
+.mic-button[aria-pressed="true"] .icon-mic-off {
+  display: block;
+}
+
+.mic-button[aria-pressed="true"] {
+  color: var(--danger);
+  border-color: rgba(255, 92, 122, 0.5);
+  background: rgba(255, 92, 122, 0.12);
+}
+
+select,
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+}
+
+.mode-select {
+  width: auto;
+}
+
+.settings {
+  overflow-y: auto;
+  gap: 4px;
+}
+
+.settings h2 {
+  margin: 4px 0;
+  font-size: 15px;
+}
+
+.settings form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-weight: 600;
+}
+
+.settings label .muted {
+  font-weight: 400;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  user-select: text;
+}
+
+.error[hidden] {
+  display: none;
+}
+
+.text-button,
+.link-button,
+.primary-button {
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.text-button {
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--amber-soft);
+}
+
+.text-button.danger {
+  color: var(--danger);
+}
+
+.text-button[hidden] {
+  display: none;
+}
+
+.link-button {
+  padding: 0;
+  background: none;
+  color: var(--amber);
+  text-decoration: underline;
+}
+
+.primary-button {
+  padding: 7px 16px;
+  background: var(--amber);
+  color: #1a1203;
+  font-weight: 700;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }

@@ -23,10 +23,10 @@ jarvis-desktop/
   src/                         # Frontend (TypeScript + Vite)
     platform.ts                # typed wrapper around the platform_info command
     tools/                     # tool registry + tools implemented in TypeScript
-    orb/                       # (phase 1) legacy sphere.html, migrated
+    orb/                       # holographic orb (canvas 2D, port of legacy sphere.html)
     widgets/                   # (phase 2) clock, weather, Spotify, system, todo, notes, files
     settings/                  # (phase 2)
-    voice/                     # (phase 1) Gemini Live session, Web Audio playback
+    voice/                     # voice state machine, Gemini Live session, Web Audio playback
     vision/                    # (phase 5) MediaPipe gestures, tesseract.js
   src-tauri/
     src/
@@ -37,7 +37,9 @@ jarvis-desktop/
         macos.rs               # real implementation (v1)
         windows.rs             # reports Unsupported until phase 8
         unsupported.rs         # Linux and other OSes (development and CI only)
-      audio/                   # (phase 1) microphone capture (cpal), VAD, wake word
+      audio/                   # microphone capture (cpal), resampling, wake word (tract)
+      secrets.rs               # API keys in the OS credential store
+      shell.rs                 # tray, global shortcut, window helpers
       services/                # (phase 2) scheduler, rules, Telegram, memory, protocols, config
       sandbox/                 # (phase 6) execution of generated code (rquickjs)
     capabilities/              # Tauri v2 permissions per window
@@ -64,8 +66,8 @@ Rules:
 | Tauri plugins            | opener (now); global-shortcut, single-instance, autostart, notification, shell, fs, clipboard-manager, store, http, os, window-state, positioner, updater (as needed) |
 | Tray                     | Tauri `TrayIcon` (menu bar on macOS)                                                                                                                                  |
 | Microphone               | `cpal`                                                                                                                                                                |
-| Wake word                | **openWakeWord** (`hey_jarvis` model, ONNX) with `ort`                                                                                                                |
-| Voice activity detection | `webrtc-vad` or Silero VAD (ONNX)                                                                                                                                     |
+| Wake word                | **openWakeWord** (`hey_jarvis` model, ONNX) run with `tract` (pure Rust, nothing to bundle)                                                                           |
+| Voice activity detection | Gemini's server-side VAD; local Silero VAD only if needed later                                                                                                       |
 | Voice AI                 | `@google/genai` (Gemini Live API) in the WebView                                                                                                                      |
 | Other LLMs               | OpenRouter and DeepSeek over `fetch`                                                                                                                                  |
 | Audio playback           | Web Audio API + AudioWorklet                                                                                                                                          |
@@ -73,7 +75,7 @@ Rules:
 | Screenshots              | `xcap`                                                                                                                                                                |
 | Active windows           | `x-win` / `active-win-pos-rs`                                                                                                                                         |
 | System stats             | `sysinfo`                                                                                                                                                             |
-| Secrets                  | `keyring` (macOS Keychain, Windows Credential Manager)                                                                                                                |
+| Secrets                  | `keyring` v4 (macOS Keychain, Windows Credential Manager)                                                                                                             |
 | macOS automation         | AppleScript / JXA through `osascript`                                                                                                                                 |
 | Browser automation       | `chromiumoxide` (CDP). A Node sidecar with Playwright only if needed                                                                                                  |
 | Gestures                 | `@mediapipe/tasks-vision`                                                                                                                                             |
@@ -125,17 +127,17 @@ Out of scope for v1: reading system notifications (macOS has no public API for i
 
 ## 6. Phases
 
-| Phase                             | Scope                                                                                                                                                                                                                | Estimate    | Status   |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
-| **0. Setup**                      | Repository, Tauri v2 + Vite + TypeScript, platform layer with Windows reporting Unsupported, tool registry, CI for macOS + Windows, legacy tool inventory                                                            | 2–3 days    | **Done** |
-| **1. Proof of concept**           | Transparent orb window, tray, global shortcut, microphone in Rust → Gemini Live → playback, "Hey JARVIS", permissions onboarding, `open_app`, `weather_report`. **Measure RAM, CPU and voice latency on a real Mac** | 3–5 days    | Next     |
-| **2. Core**                       | Memory, protocols, profile, goals, reminders, scheduler, real rules engine, settings, voices, widgets, import of legacy `config/api_keys.json` into the Keychain                                                     | 1–1.5 weeks |          |
-| **3. Platform-independent tools** | Weather, YouTube, Spotify, web search, files and organizer, documents, Telegram, OpenRouter/DeepSeek, browser (`chromiumoxide`), Gmail, Calendar, morning brief                                                      | 1 week      |          |
-| **4. macOS integration**          | Everything in section 5                                                                                                                                                                                              | 1.5 weeks   |          |
-| **5. Vision and gestures**        | `screen_vision`, `vision_guardian`, `visual_click` (OCR), camera, MediaPipe gestures                                                                                                                                 | 1 week      |          |
-| **6. Safe self-programming**      | `auto_programmer`, `tool_creator`, `self_edit` generate JavaScript that runs in `rquickjs`, with a restricted capability API and user confirmation                                                                   | 1 week      |          |
-| **7. macOS distribution**         | Universal `.dmg`, code signing and notarization (Apple Developer account), Info.plist, auto-updates                                                                                                                  | 2–3 days    |          |
-| **8. Windows**                    | `platform/windows.rs` (PowerShell, UI Automation, `enigo`), MSI/NSIS installer, Insert as default shortcut, UI testing on WebView2                                                                                   | 1.5–2 weeks |          |
+| Phase                             | Scope                                                                                                                                                                                                                | Estimate    | Status                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
+| **0. Setup**                      | Repository, Tauri v2 + Vite + TypeScript, platform layer with Windows reporting Unsupported, tool registry, CI for macOS + Windows, legacy tool inventory                                                            | 2–3 days    | **Done**                              |
+| **1. Proof of concept**           | Transparent orb window, tray, global shortcut, microphone in Rust → Gemini Live → playback, "Hey JARVIS", permissions onboarding, `open_app`, `weather_report`. **Measure RAM, CPU and voice latency on a real Mac** | 3–5 days    | **Code done**: awaiting test on a Mac |
+| **2. Core**                       | Memory, protocols, profile, goals, reminders, scheduler, real rules engine, settings, voices, widgets, import of legacy `config/api_keys.json` into the Keychain                                                     | 1–1.5 weeks | Next                                  |
+| **3. Platform-independent tools** | Weather, YouTube, Spotify, web search, files and organizer, documents, Telegram, OpenRouter/DeepSeek, browser (`chromiumoxide`), Gmail, Calendar, morning brief                                                      | 1 week      |                                       |
+| **4. macOS integration**          | Everything in section 5                                                                                                                                                                                              | 1.5 weeks   |                                       |
+| **5. Vision and gestures**        | `screen_vision`, `vision_guardian`, `visual_click` (OCR), camera, MediaPipe gestures                                                                                                                                 | 1 week      |                                       |
+| **6. Safe self-programming**      | `auto_programmer`, `tool_creator`, `self_edit` generate JavaScript that runs in `rquickjs`, with a restricted capability API and user confirmation                                                                   | 1 week      |                                       |
+| **7. macOS distribution**         | Universal `.dmg`, code signing and notarization (Apple Developer account), Info.plist, auto-updates                                                                                                                  | 2–3 days    |                                       |
+| **8. Windows**                    | `platform/windows.rs` (PowerShell, UI Automation, `enigo`), MSI/NSIS installer, Insert as default shortcut, UI testing on WebView2                                                                                   | 1.5–2 weeks |                                       |
 
 **macOS total: about 7–9 weeks. Windows: 1.5–2 more weeks.**
 
@@ -166,3 +168,21 @@ The decision for every legacy tool (port, merge, redesign, defer) is in [legacy-
 | UI automation without pywinauto                                  | Phase 4 (AppleScript) and phase 8 (UI Automation)                       |
 | Code signing and notarization                                    | Phase 7; requires an Apple Developer account                            |
 | Rust learning curve                                              | Keep Rust in small modules; keep tool logic in TypeScript when possible |
+
+## 9. Phase 1 notes
+
+What was built and verified (on Linux CI-like conditions, without a microphone or a Mac):
+
+- **Wake word**: Rust port of the openWakeWord streaming pipeline using `tract`. Scores match the reference Python implementation to four decimals on test clips. About 3 ms of CPU per 80 ms of audio in release builds.
+- **Audio**: `cpal` capture on a dedicated thread, mono mixdown, custom low-pass + interpolation resampler to 16 kHz, input level events, PCM streaming to the WebView over a Tauri `Channel`. End-to-end test: a simulated 48 kHz microphone playing "hey jarvis" fires exactly one detection.
+- **Voice controller**: state machine (`off`, `idle`, `connecting`, `listening`, `speaking`) for the three activation modes. Audio spoken while the session connects is buffered and sent, so "Hey JARVIS, open Safari" works in one breath.
+- **Gemini Live**: the SDK (3.x) defaults to API version `v1`, where the Live WebSocket returns HTTP 404; the app pins `v1beta`. Verified against the real endpoint: an invalid key is rejected with a clear message.
+- **Tools**: `get_current_time`, `open_app` (macOS `open -a`), `weather_report` (wttr.in).
+- **Shell**: transparent always-on-top window, tray menu, global shortcut (`Alt+Space`, press and release events), single instance, API key in the Keychain, microphone onboarding with a link to System Settings.
+
+Known limitations, to check on a Mac (see [TESTING_ON_MAC.md](TESTING_ON_MAC.md)):
+
+- The model never hears itself because the microphone is not sent while JARVIS speaks; it also means you cannot interrupt by voice in wake-word mode. Push-to-talk interrupts.
+- The synthetic Spanish-voiced "hey jarvis" clip scored only 0.04 (English voices: 0.98+). A Spanish accent may need a lower threshold (Settings → Wake-word sensitivity) or a custom model.
+- The `hey_jarvis` model is licensed CC BY-NC-SA 4.0 (non-commercial). See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+- Settings live in `localStorage` until the settings store arrives in phase 2.

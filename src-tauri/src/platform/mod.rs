@@ -60,6 +60,7 @@ pub enum Capability {
     DoNotDisturb,
     PowerMode,
     RevealInFileManager,
+    PrivacySettings,
 }
 
 /// Summary of the running platform, sent to the frontend.
@@ -92,6 +93,16 @@ pub enum WindowAction {
     Minimize,
     Maximize,
     Close,
+}
+
+/// System privacy panes the app may need to send the user to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PrivacyPane {
+    Microphone,
+    Accessibility,
+    ScreenRecording,
+    Camera,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,6 +193,23 @@ pub trait Platform: Send + Sync {
     fn reveal_in_file_manager(&self, _path: &Path) -> Result<()> {
         unsupported("reveal_in_file_manager")
     }
+    /// Opens the system settings page where the user grants a permission.
+    fn open_privacy_settings(&self, _pane: PrivacyPane) -> Result<()> {
+        unsupported("privacy_settings")
+    }
+}
+
+/// Validates an application name before it reaches a system command.
+// Used by the macOS implementation today and by Windows in phase 8.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+pub(crate) fn validate_app_name(name: &str) -> Result<&str> {
+    let name = name.trim();
+    if name.is_empty() || name.starts_with('-') || name.contains(['\0', '\n', '\r']) {
+        return Err(PlatformError::Failed {
+            message: format!("invalid application name: {name:?}"),
+        });
+    }
+    Ok(name)
 }
 
 /// Returns the implementation for the OS this binary was compiled for.
@@ -221,6 +249,14 @@ mod tests {
     #[test]
     fn current_platform_reports_its_os() {
         assert_eq!(current().info().os, Os::current());
+    }
+
+    #[test]
+    fn app_names_are_validated() {
+        assert_eq!(validate_app_name("  Safari ").unwrap(), "Safari");
+        assert!(validate_app_name("").is_err());
+        assert!(validate_app_name("-n").is_err());
+        assert!(validate_app_name("Safari\nrm").is_err());
     }
 
     #[test]

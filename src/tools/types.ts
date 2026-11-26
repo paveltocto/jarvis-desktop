@@ -24,11 +24,18 @@ export type ToolErrorCode = "unknown_tool" | "unsupported" | "invalid_arguments"
 export type ToolResult =
   { ok: true; output: string } | { ok: false; code: ToolErrorCode; error: string };
 
-/** Runtime information passed to every tool. */
+/** OS operations implemented by the Rust platform layer. */
+export interface SystemApi {
+  openApp(name: string): Promise<void>;
+}
+
+/** Runtime information and services passed to every tool. */
 export interface ToolContext {
   os: Os;
   capabilities: readonly Capability[];
   now: () => Date;
+  fetch: typeof fetch;
+  system: SystemApi;
 }
 
 export interface ToolDefinition {

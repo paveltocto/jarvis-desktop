@@ -7,6 +7,8 @@ const ctx = (overrides: Partial<ToolContext> = {}): ToolContext => ({
   os: "macos",
   capabilities: [],
   now: () => new Date("2026-01-01T12:00:00Z"),
+  fetch: () => Promise.reject(new Error("no network in tests")),
+  system: { openApp: () => Promise.resolve() },
   ...overrides,
 });
 

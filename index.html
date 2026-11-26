@@ -8,19 +8,111 @@
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
-    <main class="shell">
-      <h1>JARVIS</h1>
-      <p class="subtitle">Phase 0 scaffold. The holographic orb arrives in phase 1.</p>
-      <section>
-        <h2>Platform</h2>
-        <dl id="platform">
-          <dt>Status</dt>
-          <dd>Loading…</dd>
-        </dl>
+    <main class="hud">
+      <header class="titlebar" data-tauri-drag-region>
+        <span class="brand" data-tauri-drag-region>JARVIS</span>
+        <div class="titlebar-actions">
+          <button
+            id="open-settings"
+            class="icon-button"
+            type="button"
+            title="Settings"
+            aria-label="Settings"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.43-2.53.04-.97-.04-.97 2.11-1.65-2-3.46-2.49 1a7.6 7.6 0 0 0-1.68-.97L15 2h-4l-.37 2.65c-.6.24-1.16.57-1.68.97l-2.49-1-2 3.46 2.11 1.65-.04.97.04.97-2.11 1.65 2 3.46 2.49-1c.52.4 1.08.73 1.68.97L11 22h4l.37-2.65c.6-.24 1.16-.57 1.68-.97l2.49 1 2-3.46-2.11-1.65Z"
+              />
+            </svg>
+          </button>
+          <button
+            id="hide-window"
+            class="icon-button"
+            type="button"
+            title="Hide (JARVIS keeps running)"
+            aria-label="Hide"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <section id="voice-view" class="view">
+        <canvas id="orb" class="orb" data-tauri-drag-region></canvas>
+        <p id="status" class="status" aria-live="polite">Starting…</p>
+        <p id="hint" class="hint"></p>
+        <div id="notice" class="notice" hidden>
+          <p id="notice-text"></p>
+          <button id="notice-action" class="text-button" type="button" hidden></button>
+        </div>
+        <footer class="controls">
+          <button
+            id="mute"
+            class="mic-button"
+            type="button"
+            aria-pressed="false"
+            title="Mute microphone"
+          >
+            <svg class="icon-mic" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"
+              />
+            </svg>
+            <svg class="icon-mic-off" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M19 11h-2a5 5 0 0 1-.6 2.4l1.46 1.46A6.96 6.96 0 0 0 19 11ZM15 11V5a3 3 0 0 0-5.94-.6L15 10.34V11ZM4.27 3 3 4.27l6 6V11a3 3 0 0 0 4.45 2.62l1.53 1.53A5 5 0 0 1 7 11H5a7 7 0 0 0 6 6.92V21h2v-3.08a6.9 6.9 0 0 0 3.4-1.43L19.73 21 21 19.73 4.27 3Z"
+              />
+            </svg>
+          </button>
+          <select id="mode" class="mode-select" aria-label="Activation mode">
+            <option value="wake_word">“Hey JARVIS”</option>
+            <option value="push_to_talk">Push to talk</option>
+            <option value="always_on">Always listening</option>
+          </select>
+        </footer>
       </section>
-      <section>
-        <h2>Tools offered to the model</h2>
-        <ul id="tools"></ul>
+
+      <section id="settings-view" class="view settings" hidden>
+        <h2>Settings</h2>
+        <p id="settings-intro" class="muted"></p>
+        <form id="settings-form">
+          <label>
+            Gemini API key
+            <input
+              id="api-key"
+              type="password"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Stored in the Keychain"
+            />
+          </label>
+          <p class="muted small">
+            Get a key at
+            <button id="get-key" class="link-button" type="button">
+              aistudio.google.com/apikey
+            </button>
+          </p>
+          <label>
+            Wake-word sensitivity
+            <input id="threshold" type="range" min="0.1" max="0.9" step="0.05" />
+            <span class="muted small">Lower values trigger more easily (and more falsely).</span>
+          </label>
+          <label>
+            Voice
+            <select id="voice"></select>
+          </label>
+          <label>
+            Live model
+            <input id="model" type="text" spellcheck="false" />
+          </label>
+          <p id="settings-error" class="error" hidden></p>
+          <div class="settings-actions">
+            <button id="remove-key" class="text-button danger" type="button">Remove key</button>
+            <span class="spacer"></span>
+            <button id="close-settings" class="text-button" type="button">Cancel</button>
+            <button class="primary-button" type="submit">Save</button>
+          </div>
+        </form>
       </section>
     </main>
   </body>

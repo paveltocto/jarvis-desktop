@@ -12,4 +12,5 @@
 - Frontend checks: `pnpm check`
 - Rust checks (in `src-tauri/`): `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
 - Rust compiles `tauri::generate_context!`, which needs `dist/` to exist: run `pnpm build` first.
+- Wake-word tests use the WAV fixtures in `src-tauri/tests/fixtures/`; `cargo test` runs the full audio pipeline without a microphone.
 - Linux needs the WebKitGTK packages from https://v2.tauri.app/start/prerequisites/#linux to compile.

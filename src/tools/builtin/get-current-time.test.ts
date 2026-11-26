@@ -6,6 +6,8 @@ const ctx: ToolContext = {
   os: "macos",
   capabilities: [],
   now: () => new Date("2026-03-15T17:30:00Z"),
+  fetch: () => Promise.reject(new Error("no network in tests")),
+  system: { openApp: () => Promise.resolve() },
 };
 
 describe("get_current_time", () => {

@@ -27,23 +27,23 @@ Parameter schemas for all 66 tools are in [`legacy/tool-parameters.json`](legacy
 
 ## Core, voice and UI
 
-| Tool                | Legacy status | Decision | Phase | Notes                                                                                                        |
-| ------------------- | ------------- | -------- | ----- | ------------------------------------------------------------------------------------------------------------ |
-| `get_current_time`  | Working       | Port     | 0     | **Done.** Pure TypeScript; first tool in the registry.                                                       |
-| `sleep_mode`        | Working       | Redesign | 1     | Becomes the wake-word idle state ("Hey JARVIS"). Legacy used Vosk and matched "jarvis" anywhere in the text. |
-| `shutdown_jarvis`   | Working       | Port     | 2     |                                                                                                              |
-| `jarvis_ui_control` | Working       | Port     | 2     | Show and hide widgets.                                                                                       |
-| `show_hologram`     | Working       | Port     | 2     | Renders HTML or a URL in an overlay window. HTML must be sandboxed.                                          |
-| `activate_protocol` | Working       | Port     | 2     | Named instruction sets stored in `protocols.json`.                                                           |
-| `save_memory`       | Working       | Port     | 2     | Keep the legacy `memory/*.json` format and import it on first run.                                           |
-| `camera_bus`        | Working       | Port     | 5     |                                                                                                              |
+| Tool                | Legacy status | Decision | Phase | Notes                                                                                                                                                      |
+| ------------------- | ------------- | -------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_current_time`  | Working       | Port     | 0     | **Done.** Pure TypeScript; first tool in the registry.                                                                                                     |
+| `sleep_mode`        | Working       | Redesign | 1     | **Done.** Replaced by the `idle` voice state with local "Hey JARVIS" detection (openWakeWord). Legacy used Vosk and matched "jarvis" anywhere in the text. |
+| `shutdown_jarvis`   | Working       | Port     | 2     |                                                                                                                                                            |
+| `jarvis_ui_control` | Working       | Port     | 2     | Show and hide widgets.                                                                                                                                     |
+| `show_hologram`     | Working       | Port     | 2     | Renders HTML or a URL in an overlay window. HTML must be sandboxed.                                                                                        |
+| `activate_protocol` | Working       | Port     | 2     | Named instruction sets stored in `protocols.json`.                                                                                                         |
+| `save_memory`       | Working       | Port     | 2     | Keep the legacy `memory/*.json` format and import it on first run.                                                                                         |
+| `camera_bus`        | Working       | Port     | 5     |                                                                                                                                                            |
 
 ## System control
 
 | Tool                 | Legacy status | Decision | Phase | Notes                                                                                                     |
 | -------------------- | ------------- | -------- | ----- | --------------------------------------------------------------------------------------------------------- |
-| `open_app`           | Working       | Port     | 1     | macOS: `open -a`. Platform capability `open_app`.                                                         |
-| `weather_report`     | Working       | Port     | 1     | wttr.in, no API key.                                                                                      |
+| `open_app`           | Working       | Port     | 1     | **Done.** macOS: `open -a`. Platform capability `open_app`.                                               |
+| `weather_report`     | Working       | Port     | 1     | **Done.** wttr.in JSON API, no API key.                                                                   |
 | `system_monitor`     | Working       | Port     | 3     | `sysinfo` crate, cross-platform.                                                                          |
 | `window_control`     | Working       | Port     | 4     | Capability `windows`.                                                                                     |
 | `computer_settings`  | Working       | Merge    | 4     | Merged with `contextual_control` into one settings tool (volume, brightness, Do Not Disturb, power mode). |

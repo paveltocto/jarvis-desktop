@@ -2,7 +2,7 @@
 
 A voice-first desktop assistant inspired by JARVIS, built with [Tauri v2](https://v2.tauri.app/), Rust and TypeScript. It is the successor of the Python app in [`paveltocto/jarvis-ai`](https://github.com/paveltocto/jarvis-ai).
 
-**Status:** phase 0 (project setup) is done. See the [migration plan](docs/MIGRATION_PLAN.md) for the roadmap and the [legacy tool inventory](docs/legacy-tool-inventory.md) for what is being ported.
+**Status:** phase 1 (voice proof of concept) is implemented and awaiting testing on a Mac: see [TESTING_ON_MAC.md](docs/TESTING_ON_MAC.md). See the [migration plan](docs/MIGRATION_PLAN.md) for the roadmap and the [legacy tool inventory](docs/legacy-tool-inventory.md) for what is being ported.
 
 **Platforms:** macOS first (Apple Silicon and Intel). Windows is planned; the code is structured so it can be added without a rewrite.
 
@@ -11,6 +11,13 @@ A voice-first desktop assistant inspired by JARVIS, built with [Tauri v2](https:
 - **Tauri v2**: native shell using the system WebView (WKWebView on macOS, WebView2 on Windows).
 - **Rust**: backend services and all operating-system access.
 - **TypeScript + Vite**: UI, Gemini Live voice session and tools that do not need the OS.
+
+## What works today
+
+- Floating holographic orb window, menu bar icon, single instance.
+- Voice conversation with Gemini Live in three modes: **"Hey JARVIS"** (local wake word, nothing is sent before it), **push to talk** (hold ⌥ Space) and **always listening**.
+- Tools: open apps, current weather, current time.
+- Gemini API key stored in the macOS Keychain.
 
 ## Prerequisites (macOS)
 
@@ -54,6 +61,10 @@ docs/                Plan, inventory and legacy reference data
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md). All code, comments and documentation are written in English.
+
+## Licensing note
+
+The bundled "hey jarvis" wake-word model is licensed for **non-commercial use only**. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Security
 
