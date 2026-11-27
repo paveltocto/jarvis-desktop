@@ -28,10 +28,24 @@ export function summarizeGoals(goals: Goal[] | null): GoalSummary[] {
   }));
 }
 
-/** Weather text is trimmed to a size that fits the small window. */
-export const WEATHER_MAX_CHARS = 280;
+/** The goal the widget features: the first unfinished one, or the first of all. */
+export function featuredGoal(goals: GoalSummary[]): GoalSummary | null {
+  return goals.find((goal) => goal.progress < 100) ?? goals[0] ?? null;
+}
 
-export function clipWeather(text: string): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length <= WEATHER_MAX_CHARS ? flat : `${flat.slice(0, WEATHER_MAX_CHARS - 1)}…`;
+/** "Today 11:30 AM", "Tomorrow 9:00 AM" or "Dec 15, 9:00 AM". */
+export function formatDue(dueAtMs: number, now: Date, timeZone?: string): string {
+  const zone: Intl.DateTimeFormatOptions = timeZone ? { timeZone } : {};
+  const due = new Date(dueAtMs);
+  const day = (date: Date) => date.toLocaleDateString("en-US", zone);
+  const time = due.toLocaleTimeString("en-US", { ...zone, hour: "numeric", minute: "2-digit" });
+  if (day(due) === day(now)) return `Today ${time}`;
+  // 36 hours after local noon is always the next calendar day, even across DST changes.
+  const hour = Number(
+    now.toLocaleTimeString("en-US", { ...zone, hour: "2-digit", hourCycle: "h23" }),
+  );
+  const tomorrow = new Date(now.getTime() + (36 - hour) * 3_600_000);
+  if (day(due) === day(tomorrow)) return `Tomorrow ${time}`;
+  const date = due.toLocaleDateString("en-US", { ...zone, month: "short", day: "numeric" });
+  return `${date}, ${time}`;
 }

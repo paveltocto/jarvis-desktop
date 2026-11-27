@@ -1,14 +1,15 @@
 import type { DocumentStore } from "../data/document-store";
 import type { GoalsDocument } from "../data/records";
+import type { Weather } from "../tools/builtin/weather-report";
 import type { ReminderApi } from "../tools/types";
 import { WIDGET_IDS, WIDGET_TITLES, type WidgetId } from "./catalog";
-import { clipWeather, formatClock, summarizeGoals } from "./logic";
+import { featuredGoal, formatClock, formatDue, summarizeGoals } from "./logic";
 
 export interface WidgetDeps {
   store: DocumentStore;
   reminders: ReminderApi;
-  /** Returns the weather text for a city, or throws. */
-  weather(city: string): Promise<string>;
+  /** Returns the current weather for a city, or throws. */
+  weather(city: string): Promise<Weather>;
 }
 
 const CLOCK_TICK_MS = 1_000;
@@ -22,6 +23,8 @@ export class WidgetPanel {
   readonly #root: HTMLElement;
   readonly #deps: WidgetDeps;
   #bodies = new Map<WidgetId, HTMLElement>();
+  /** Short text at the right of a widget title. */
+  #metas = new Map<WidgetId, HTMLElement>();
   #clockTimer: ReturnType<typeof setInterval> | null = null;
   #weatherTimer: ReturnType<typeof setInterval> | null = null;
   #city = "";
@@ -38,17 +41,27 @@ export class WidgetPanel {
     this.#visible = WIDGET_IDS.filter((id) => visible.includes(id));
     this.#city = city;
     this.#bodies = new Map();
+    this.#metas = new Map();
+    // Clock and weather share a row; either takes all of it when alone.
+    const paired = this.#visible.includes("clock") && this.#visible.includes("weather");
     this.#root.replaceChildren(
       ...this.#visible.map((id) => {
         const section = document.createElement("section");
-        section.className = "widget";
+        const half = paired && (id === "clock" || id === "weather");
+        section.className = half ? "widget" : "widget wide";
         section.dataset.widget = id;
+        const header = document.createElement("div");
+        header.className = "widget-header";
         const title = document.createElement("h3");
         title.textContent = WIDGET_TITLES[id];
+        const meta = document.createElement("span");
+        meta.className = "widget-meta";
+        this.#metas.set(id, meta);
+        header.append(title, meta);
         const body = document.createElement("div");
         body.className = "widget-body";
         this.#bodies.set(id, body);
-        section.append(title, body);
+        section.append(header, body);
         return section;
       }),
     );
@@ -85,7 +98,7 @@ export class WidgetPanel {
     const body = this.#bodies.get("clock");
     if (!body) return;
     const { time, date } = formatClock(new Date());
-    setLines(body, [time, date], "clock-time");
+    body.replaceChildren(line(time, "primary-line"), line(date, "secondary-line"));
   }
 
   async #drawReminders(): Promise<void> {
@@ -93,15 +106,16 @@ export class WidgetPanel {
     if (!body) return;
     try {
       const pending = await this.#deps.reminders.list();
-      const lines = pending
-        .slice(0, 5)
-        .map(
-          (item) =>
-            `${new Date(item.dueAtMs).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })} · ${item.message}`,
-        );
-      setLines(body, lines.length ? lines : ["No pending reminders."]);
+      const next = pending[0];
+      this.#setMeta("reminders", pending.length > 1 ? `+${pending.length - 1} more` : "");
+      body.replaceChildren(
+        next
+          ? itemRow(next.message, formatDue(next.dueAtMs, new Date()))
+          : line("No pending reminders.", "secondary-line"),
+      );
     } catch (error) {
-      setLines(body, [`Could not load reminders: ${messageOf(error)}`], "error");
+      this.#setMeta("reminders", "");
+      body.replaceChildren(line(`Could not load reminders: ${messageOf(error)}`, "error"));
     }
   }
 
@@ -110,13 +124,23 @@ export class WidgetPanel {
     if (!body) return;
     try {
       const goals = summarizeGoals(await this.#deps.store.read<GoalsDocument>("goals"));
-      const lines = goals.slice(0, 5).map((goal) => {
-        const deadline = goal.deadline ? ` · due ${goal.deadline}` : "";
-        return `${goal.title} · ${goal.progress}%${deadline}`;
-      });
-      setLines(body, lines.length ? lines : ["No goals yet."]);
+      const goal = featuredGoal(goals);
+      if (!goal) {
+        this.#setMeta("goals", "");
+        body.replaceChildren(line("No goals yet.", "secondary-line"));
+        return;
+      }
+      const deadline = goal.deadline ? ` · due ${goal.deadline}` : "";
+      this.#setMeta("goals", `${goal.progress}%${deadline}`);
+      const bar = document.createElement("progress");
+      bar.max = 100;
+      bar.value = goal.progress;
+      bar.setAttribute("aria-label", `Progress of ${goal.title}`);
+      const others = goals.length > 1 ? `+${goals.length - 1} more` : "";
+      body.replaceChildren(itemRow(goal.title, others), bar);
     } catch (error) {
-      setLines(body, [`Could not load goals: ${messageOf(error)}`], "error");
+      this.#setMeta("goals", "");
+      body.replaceChildren(line(`Could not load goals: ${messageOf(error)}`, "error"));
     }
   }
 
@@ -124,27 +148,51 @@ export class WidgetPanel {
     const body = this.#bodies.get("weather");
     if (!body) return;
     if (!this.#city) {
-      setLines(body, ["Set a city in Settings to see the weather."]);
+      body.replaceChildren(line("Set a city in Settings to see the weather.", "secondary-line"));
       return;
     }
     try {
-      setLines(body, [clipWeather(await this.#deps.weather(this.#city))]);
+      const weather = await this.#deps.weather(this.#city);
+      const range =
+        weather.highC !== null && weather.lowC !== null
+          ? ` · H:${weather.highC}° L:${weather.lowC}°`
+          : "";
+      body.replaceChildren(
+        line(`${weather.tempC}°C`, "primary-line"),
+        line(weather.condition),
+        line(`${weather.area}${range}`, "secondary-line"),
+      );
     } catch (error) {
-      setLines(body, [`Weather unavailable: ${messageOf(error)}`], "error");
+      body.replaceChildren(line(`Weather unavailable: ${messageOf(error)}`, "error"));
     }
+  }
+
+  #setMeta(id: WidgetId, text: string): void {
+    const meta = this.#metas.get(id);
+    if (meta) meta.textContent = text;
   }
 }
 
-/** Replaces the body with one element per line. */
-function setLines(body: HTMLElement, lines: string[], className?: string): void {
-  body.replaceChildren(
-    ...lines.map((line) => {
-      const paragraph = document.createElement("p");
-      paragraph.textContent = line;
-      if (className) paragraph.className = className;
-      return paragraph;
-    }),
-  );
+function line(text: string, className?: string): HTMLParagraphElement {
+  const paragraph = document.createElement("p");
+  paragraph.textContent = text;
+  if (className) paragraph.className = className;
+  return paragraph;
+}
+
+/** A title that truncates, with a short detail at the right. */
+function itemRow(title: string, detail: string): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "item-row";
+  const name = document.createElement("span");
+  name.className = "item-title";
+  name.textContent = title;
+  name.title = title;
+  const extra = document.createElement("span");
+  extra.className = "item-detail";
+  extra.textContent = detail;
+  row.append(name, extra);
+  return row;
 }
 
 function messageOf(error: unknown): string {

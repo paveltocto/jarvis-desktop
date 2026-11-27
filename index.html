@@ -8,9 +8,12 @@
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
-    <main class="hud">
+    <main id="hud" class="hud">
       <header class="titlebar" data-tauri-drag-region>
-        <span class="brand" data-tauri-drag-region>JARVIS</span>
+        <div class="titlebar-title" data-tauri-drag-region>
+          <span class="brand" data-tauri-drag-region>JARVIS</span>
+          <span class="crumb" data-tauri-drag-region>/ Settings</span>
+        </div>
         <div class="titlebar-actions">
           <button
             id="open-settings"
@@ -24,6 +27,15 @@
                 d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.43-2.53.04-.97-.04-.97 2.11-1.65-2-3.46-2.49 1a7.6 7.6 0 0 0-1.68-.97L15 2h-4l-.37 2.65c-.6.24-1.16.57-1.68.97l-2.49-1-2 3.46 2.11 1.65-.04.97.04.97-2.11 1.65 2 3.46 2.49-1c.52.4 1.08.73 1.68.97L11 22h4l.37-2.65c.6-.24 1.16-.57 1.68-.97l2.49 1 2-3.46-2.11-1.65Z"
               />
             </svg>
+          </button>
+          <button
+            id="dismiss-settings"
+            class="icon-button"
+            type="button"
+            title="Close settings"
+            aria-label="Close settings"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
           <button
             id="hide-window"
@@ -44,8 +56,8 @@
         <div id="notice" class="notice" hidden>
           <p id="notice-text"></p>
           <div class="notice-actions">
-            <button id="notice-action" class="text-button" type="button" hidden></button>
-            <button id="notice-cancel" class="text-button" type="button" hidden>Cancel</button>
+            <button id="notice-cancel" class="secondary-button" type="button" hidden>Cancel</button>
+            <button id="notice-action" class="primary-button" type="button" hidden></button>
           </div>
         </div>
         <div id="widgets" class="widgets" aria-label="Widgets" hidden></div>
@@ -68,96 +80,184 @@
               />
             </svg>
           </button>
-          <select id="mode" class="mode-select" aria-label="Activation mode">
-            <option value="wake_word">“Hey JARVIS”</option>
-            <option value="push_to_talk">Push to talk</option>
-            <option value="always_on">Always listening</option>
-          </select>
+          <span class="mode-picker">
+            <select id="mode" class="mode-select" aria-label="Activation mode">
+              <option value="wake_word">“Hey JARVIS”</option>
+              <option value="push_to_talk">Push to talk</option>
+              <option value="always_on">Always listening</option>
+            </select>
+          </span>
         </footer>
       </section>
 
-      <section id="settings-view" class="view settings" hidden>
-        <h2>Settings</h2>
-        <p id="settings-intro" class="muted"></p>
-        <form id="settings-form">
-          <label>
-            Gemini API key
-            <input
-              id="api-key"
-              type="password"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="Stored in the Keychain"
-            />
-          </label>
-          <p class="muted small">
-            Get a key at
-            <button id="get-key" class="link-button" type="button">
-              aistudio.google.com/apikey
-            </button>
-          </p>
-          <label>
-            Wake-word sensitivity
-            <input id="threshold" type="range" min="0.1" max="0.9" step="0.05" />
-            <span class="muted small">Lower values trigger more easily (and more falsely).</span>
-          </label>
-          <label>
-            Voice shortcut
-            <select id="voice-shortcut"></select>
-            <span class="muted small">⌥ Space is also used by Gemini and ChatGPT.</span>
-          </label>
-          <label>
+      <section id="settings-view" class="view settings" aria-label="Settings" hidden>
+        <div id="settings-tabs" class="tabs" role="tablist" aria-label="Settings categories">
+          <button
+            id="tab-voice"
+            class="tab"
+            type="button"
+            role="tab"
+            aria-controls="panel-voice"
+            aria-selected="true"
+          >
             Voice
-            <select id="voice"></select>
-          </label>
-          <label>
-            Live model
-            <input id="model" type="text" spellcheck="false" />
-          </label>
-          <label>
-            Weather city
-            <input id="weather-city" type="text" maxlength="80" placeholder="e.g. Lima" />
-          </label>
-          <fieldset class="widget-choices">
-            <legend>Widgets shown</legend>
-            <label><input name="widget" type="checkbox" value="clock" /> Clock</label>
-            <label><input name="widget" type="checkbox" value="weather" /> Weather</label>
-            <label><input name="widget" type="checkbox" value="reminders" /> Reminders</label>
-            <label><input name="widget" type="checkbox" value="goals" /> Goals</label>
-          </fieldset>
-          <p id="settings-error" class="error" hidden></p>
-          <p id="settings-status" class="muted" role="status" hidden></p>
-          <div class="settings-actions">
-            <button id="import-legacy" class="text-button" type="button">
-              Import api_keys.json…
-            </button>
-            <button id="import-legacy-memory" class="text-button" type="button">
-              Import memory…
-            </button>
-            <button id="import-legacy-protocols" class="text-button" type="button">
-              Import protocols…
-            </button>
-            <button id="remove-key" class="text-button danger" type="button">Remove key</button>
-            <span class="spacer"></span>
-            <button id="close-settings" class="text-button" type="button">Cancel</button>
-            <button class="primary-button" type="submit">Save</button>
+          </button>
+          <button
+            id="tab-widgets"
+            class="tab"
+            type="button"
+            role="tab"
+            aria-controls="panel-widgets"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Widgets
+          </button>
+          <button
+            id="tab-data"
+            class="tab"
+            type="button"
+            role="tab"
+            aria-controls="panel-data"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Data
+          </button>
+          <button
+            id="tab-automations"
+            class="tab"
+            type="button"
+            role="tab"
+            aria-controls="panel-automations"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Automations
+          </button>
+        </div>
+        <form id="settings-form" class="settings-form">
+          <div id="settings-scroll" class="settings-scroll">
+            <p id="settings-intro" class="muted"></p>
+
+            <div id="panel-voice" class="tab-panel" role="tabpanel" aria-labelledby="tab-voice">
+              <div class="field">
+                <div class="field-heading">
+                  <label for="api-key">Gemini API key</label>
+                  <button id="get-key" class="link-button small" type="button">
+                    Get a key at aistudio.google.com/apikey
+                  </button>
+                </div>
+                <input
+                  id="api-key"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Stored in the Keychain"
+                />
+              </div>
+              <div class="field">
+                <div class="field-heading">
+                  <label for="threshold">Wake-word threshold</label>
+                  <output id="threshold-value" class="field-value" for="threshold"></output>
+                </div>
+                <input id="threshold" type="range" min="0.1" max="0.9" step="0.05" />
+                <p class="muted small">Lower values trigger more easily (and more falsely).</p>
+              </div>
+              <div class="field-row">
+                <label class="field">
+                  Voice shortcut
+                  <select id="voice-shortcut"></select>
+                </label>
+                <label class="field">
+                  Voice
+                  <select id="voice"></select>
+                </label>
+              </div>
+              <p class="muted small">⌥ Space is also used by Gemini and ChatGPT.</p>
+              <label class="field">
+                Live model
+                <input id="model" class="mono" type="text" spellcheck="false" />
+              </label>
+            </div>
+
+            <div
+              id="panel-widgets"
+              class="tab-panel"
+              role="tabpanel"
+              aria-labelledby="tab-widgets"
+              hidden
+            >
+              <label class="field">
+                Weather city
+                <input id="weather-city" type="text" maxlength="80" placeholder="e.g. Lima" />
+              </label>
+              <fieldset class="widget-choices">
+                <legend>Widgets shown</legend>
+                <label><input name="widget" type="checkbox" value="clock" /> Clock</label>
+                <label><input name="widget" type="checkbox" value="weather" /> Weather</label>
+                <label><input name="widget" type="checkbox" value="reminders" /> Reminders</label>
+                <label><input name="widget" type="checkbox" value="goals" /> Goals</label>
+              </fieldset>
+            </div>
+
+            <div
+              id="panel-data"
+              class="tab-panel"
+              role="tabpanel"
+              aria-labelledby="tab-data"
+              hidden
+            >
+              <p class="muted small">Import data from the legacy app.</p>
+              <div class="button-stack">
+                <button id="import-legacy" class="secondary-button" type="button">
+                  Import api_keys.json…
+                </button>
+                <button id="import-legacy-memory" class="secondary-button" type="button">
+                  Import memory…
+                </button>
+                <button id="import-legacy-protocols" class="secondary-button" type="button">
+                  Import protocols…
+                </button>
+              </div>
+              <button id="remove-key" class="secondary-button danger" type="button">
+                Remove key
+              </button>
+            </div>
+
+            <div
+              id="panel-automations"
+              class="tab-panel"
+              role="tabpanel"
+              aria-labelledby="tab-automations"
+              hidden
+            >
+              <section aria-labelledby="protocols-title">
+                <h3 id="protocols-title" class="section-title">Protocols</h3>
+                <ul id="protocol-list" class="item-list"></ul>
+                <p id="protocol-empty" class="muted small" hidden>
+                  No protocols yet. Ask JARVIS to save one, or import them from the legacy app.
+                </p>
+              </section>
+              <section aria-labelledby="rules-title">
+                <h3 id="rules-title" class="section-title">Rules</h3>
+                <ul id="rule-list" class="item-list"></ul>
+                <p id="rule-empty" class="muted small" hidden>
+                  No rules yet. Ask JARVIS to create one, for example "when I say good morning, open
+                  Spotify".
+                </p>
+              </section>
+            </div>
+          </div>
+          <div class="settings-footer">
+            <p id="settings-error" class="error" role="alert" hidden></p>
+            <p id="settings-status" class="muted small" role="status" hidden></p>
+            <div class="settings-actions">
+              <button id="close-settings" class="text-button" type="button">Cancel</button>
+              <button class="primary-button" type="submit">Save</button>
+            </div>
           </div>
         </form>
-        <section class="protocols" aria-labelledby="protocols-title">
-          <h3 id="protocols-title">Protocols</h3>
-          <ul id="protocol-list" class="protocol-list"></ul>
-          <p id="protocol-empty" class="muted small" hidden>
-            No protocols yet. Ask JARVIS to save one, or import them from the legacy app.
-          </p>
-        </section>
-        <section class="rules" aria-labelledby="rules-title">
-          <h3 id="rules-title">Rules</h3>
-          <ul id="rule-list" class="protocol-list"></ul>
-          <p id="rule-empty" class="muted small" hidden>
-            No rules yet. Ask JARVIS to create one, for example "when I say good morning, open
-            Spotify".
-          </p>
-        </section>
       </section>
     </main>
   </body>

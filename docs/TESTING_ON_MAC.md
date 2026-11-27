@@ -36,7 +36,7 @@ You need a Gemini API key from https://aistudio.google.com/apikey.
 ### "Hey JARVIS" (default mode)
 
 - [ ] Idle shows "Standing by". Saying **"Hey JARVIS"** switches to "Listening…" within about half a second.
-- [ ] Try different distances and volumes. If it rarely triggers, lower Settings › Wake-word sensitivity (for example 0.3). Note the value that works for your voice and accent.
+- [ ] Try different distances and volumes. If it rarely triggers, lower Settings › Voice › Wake-word threshold (for example 0.3). Note the value that works for your voice and accent.
 - [ ] Normal conversation, TV or music for a few minutes does **not** trigger it (note any false triggers).
 - [ ] "Hey JARVIS, what time is it?" in one breath: the question is not cut off.
 - [ ] After about 12 seconds of silence, it returns to "Standing by".
