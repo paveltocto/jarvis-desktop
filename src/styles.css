@@ -1,12 +1,19 @@
 :root {
-  --amber: #f59e0b;
-  --amber-soft: #fde68a;
-  --amber-dim: rgba(245, 158, 11, 0.35);
-  --glass: rgba(12, 10, 4, 0.82);
-  --border: rgba(245, 158, 11, 0.28);
-  --text: #f5f1e6;
-  --muted: #a8a196;
+  --accent: #00c8ff;
+  --accent-soft: #7ce8ff;
+  --accent-dim: rgba(0, 200, 255, 0.4);
+  --accent-wash: rgba(0, 200, 255, 0.14);
+  --on-accent: #061018;
+  --glass: rgba(10, 14, 20, 0.88);
+  --card: rgba(17, 24, 36, 0.65);
+  --field: #111824;
+  --border: rgba(0, 200, 255, 0.22);
+  --text: #f0f6fc;
+  --muted: #8b9bb4;
   --danger: #ff5c7a;
+  --danger-dim: rgba(255, 92, 122, 0.45);
+  --danger-wash: rgba(255, 92, 122, 0.1);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: dark;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -15,6 +22,11 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* `display` rules below must not override the `hidden` attribute. */
+[hidden] {
+  display: none !important;
 }
 
 html,
@@ -28,6 +40,11 @@ body {
   user-select: none;
 }
 
+h3,
+p {
+  margin: 0;
+}
+
 .hud {
   height: 100%;
   display: flex;
@@ -36,28 +53,66 @@ body {
   border: 1px solid var(--border);
   border-radius: 18px;
   overflow: hidden;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
 }
 
+/* ---------------------------------------------------------------- title bar */
+
 .titlebar {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px 0 16px;
+  height: 40px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
   cursor: grab;
 }
 
+/*
+ * Leave room for the native traffic lights, which also replace the hide
+ * button. The shorter bar keeps the brand level with them.
+ */
+.platform-macos .titlebar {
+  height: 30px;
+  padding-left: 78px;
+}
+
+.platform-macos #hide-window {
+  display: none;
+}
+
+.titlebar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .brand {
-  color: var(--amber);
-  font-weight: 700;
-  letter-spacing: 0.32em;
+  color: var(--accent);
+  font-family: var(--mono);
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-shadow: 0 0 8px var(--accent-dim);
+}
+
+.crumb {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .titlebar-actions {
   display: flex;
   gap: 4px;
+}
+
+.hud:not([data-view="settings"]) .crumb,
+.hud:not([data-view="settings"]) #dismiss-settings,
+.hud[data-view="settings"] #open-settings {
+  display: none;
 }
 
 .icon-button {
@@ -73,97 +128,271 @@ body {
 }
 
 .icon-button:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
+  background: var(--accent-wash);
+  color: var(--accent-soft);
 }
 
 .icon-button svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
+  width: 15px;
+  height: 15px;
+  fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.8;
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
+
+/* --------------------------------------------------------------- voice view */
 
 .view {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0 16px 16px;
 }
 
-.view[hidden] {
-  display: none;
+#voice-view {
+  padding: 0 14px 12px;
 }
 
+/* The orb takes the space the status, notice and widgets leave free. */
 .orb {
-  flex: 1;
-  min-height: 160px;
+  flex: 1 1 0;
+  min-height: 56px;
   width: 100%;
 }
 
 .status {
-  margin: 0;
+  flex: none;
   text-align: center;
   font-size: 15px;
   font-weight: 600;
-  color: var(--amber-soft);
+  color: var(--accent-soft);
+  text-shadow: 0 0 8px rgba(124, 232, 255, 0.4);
+}
+
+.hud[data-state="muted"] .status {
+  color: var(--danger);
+  text-shadow: none;
+}
+
+.hud[data-state="off"] .status {
+  color: var(--muted);
+  text-shadow: none;
 }
 
 .hint {
-  margin: 4px 0 0;
-  min-height: 1.4em;
+  flex: none;
+  margin-top: 4px;
+  min-height: 1.6em;
   text-align: center;
+  font-size: 12px;
   color: var(--muted);
 }
 
+.hint kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--accent-wash);
+  color: var(--accent-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .notice {
+  flex: 0 1 auto;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 92, 122, 0.4);
-  border-radius: 10px;
-  background: rgba(255, 92, 122, 0.08);
+  border: 1px solid var(--accent-dim);
+  border-radius: 12px;
+  background: var(--card);
   user-select: text;
 }
 
-.notice[hidden] {
-  display: none;
+.notice[data-tone="danger"] {
+  border-color: var(--danger-dim);
+  background: var(--danger-wash);
 }
 
+/* Long messages scroll, so the buttons stay reachable. */
 .notice p {
-  margin: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
 }
 
 .notice-actions {
+  flex: none;
   display: flex;
-  gap: 16px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.notice .text-button {
-  margin-top: 6px;
-  padding-left: 0;
+.notice-actions:not(:has(button:not([hidden]))) {
+  display: none;
 }
+
+/*
+ * A notice the user can answer replaces the widgets until then. One without
+ * buttons cannot be dismissed, so it leaves them on screen.
+ */
+.notice:not([hidden]):has(button:not([hidden])) ~ .widgets {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ widgets */
+
+.widgets {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 6px;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+
+.widget {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.widget.wide {
+  grid-column: 1 / -1;
+}
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
+}
+
+.widget h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.widget-meta {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.widget p {
+  margin-top: 3px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.widget .primary-line {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.widget .secondary-line {
+  color: var(--muted);
+}
+
+.widget .item-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.item-row .item-title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.item-row .item-detail {
+  flex: none;
+  color: var(--muted);
+}
+
+.widget progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: 6px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--accent-wash);
+}
+
+.widget progress::-webkit-progress-bar {
+  background: var(--accent-wash);
+}
+
+.widget progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
+.widget .error {
+  color: var(--danger);
+}
+
+/* ----------------------------------------------------------------- controls */
 
 .controls {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .mic-button {
+  flex: none;
   width: 48px;
   height: 48px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--amber-dim);
+  border: 1.5px solid var(--accent);
   border-radius: 50%;
-  background: rgba(245, 158, 11, 0.14);
-  color: var(--amber);
+  background: var(--accent-wash);
+  box-shadow: 0 0 12px var(--accent-dim);
+  color: var(--accent);
   cursor: pointer;
+}
+
+.hud[data-state="listening"] .mic-button {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.hud[data-state="off"] .mic-button {
+  border-color: var(--border);
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
 }
 
 .mic-button svg {
@@ -181,69 +410,294 @@ body {
   display: block;
 }
 
-.mic-button[aria-pressed="true"] {
+.hud .mic-button[aria-pressed="true"] {
+  border-color: var(--danger);
+  background: var(--danger-wash);
+  box-shadow: 0 0 12px var(--danger-dim);
   color: var(--danger);
-  border-color: rgba(255, 92, 122, 0.5);
-  background: rgba(255, 92, 122, 0.12);
 }
+
+.mode-picker {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Chevron for the borderless native select. */
+.mode-picker::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 5px);
+  right: 14px;
+  width: 6px;
+  height: 6px;
+  border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ fields */
 
 select,
 input[type="text"],
 input[type="password"] {
   width: 100%;
-  padding: 7px 9px;
+  height: 34px;
+  padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  background-color: var(--field);
   color: var(--text);
   font: inherit;
   user-select: text;
 }
 
-.mode-select {
+input::placeholder {
+  color: var(--muted);
+}
+
+input.mono[type="text"] {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.mode-picker .mode-select {
   width: auto;
+  padding: 0 32px 0 14px;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
 }
 
-.settings {
-  overflow-y: auto;
-  gap: 4px;
+input[type="checkbox"] {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
-.settings h2 {
-  margin: 4px 0;
-  font-size: 15px;
+input[type="range"] {
+  /* Set from `main.ts` so the track is filled up to the thumb. */
+  --fill: 50%;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
 }
 
-.settings form {
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--accent) var(--fill), var(--accent-wash) var(--fill));
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  width: 15px;
+  height: 15px;
+  margin-top: -5px;
+  -webkit-appearance: none;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+/* ----------------------------------------------------------------- settings */
+
+.tabs {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 2px;
+  margin: 8px 12px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.tab {
+  height: 28px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  border-color: var(--accent-dim);
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.settings-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-scroll {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 4px 16px 12px;
+  overflow-y: auto;
 }
 
-.settings label {
+/* Keep the children at their natural height so the container scrolls. */
+.settings-scroll > * {
+  flex: none;
+}
+
+.settings-scroll > .muted:empty {
+  display: none;
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-weight: 600;
 }
 
-.settings label .muted {
-  font-weight: 400;
+.field-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.field-value {
+  color: var(--accent-soft);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.widget-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.widget-choices legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.widget-choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.button-stack .secondary-button {
+  text-align: left;
+}
+
+#remove-key {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.section-title {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.item-list li span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.settings-footer p {
+  max-height: 4.5em;
+  overflow-y: auto;
 }
 
 .settings-actions {
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.spacer {
-  flex: 1;
-}
+/* -------------------------------------------------------------- text, buttons */
 
 .muted {
   color: var(--muted);
-  margin: 0;
 }
 
 .small {
@@ -251,99 +705,84 @@ input[type="password"] {
 }
 
 .error {
-  margin: 0;
   color: var(--danger);
   user-select: text;
 }
 
-.error[hidden] {
-  display: none;
-}
-
 .text-button,
 .link-button,
-.primary-button {
+.primary-button,
+.secondary-button {
   border: 0;
   border-radius: 8px;
   font: inherit;
   cursor: pointer;
 }
 
+.text-button,
+.primary-button,
+.secondary-button {
+  min-height: 30px;
+  padding: 5px 14px;
+}
+
 .text-button {
-  padding: 7px 10px;
   background: transparent;
-  color: var(--amber-soft);
+  color: var(--muted);
 }
 
-.text-button.danger {
-  color: var(--danger);
+.text-button:hover {
+  color: var(--text);
 }
 
-.text-button[hidden] {
-  display: none;
+.secondary-button {
+  border: 1px solid var(--muted);
+  background: transparent;
+  color: var(--text);
+}
+
+.secondary-button:hover {
+  background: var(--accent-wash);
 }
 
 .link-button {
   padding: 0;
   background: none;
-  color: var(--amber);
+  color: var(--accent);
+}
+
+.link-button:hover {
   text-decoration: underline;
 }
 
 .primary-button {
-  padding: 7px 16px;
-  background: var(--amber);
-  color: #1a1203;
-  font-weight: 700;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.primary-button:hover {
+  background: var(--accent-soft);
+}
+
+.text-button.danger,
+.secondary-button.danger {
+  color: var(--danger);
+}
+
+.secondary-button.danger {
+  border-color: var(--danger-dim);
+  background: var(--danger-wash);
+}
+
+/* Confirmations and errors that warrant attention use the danger color. */
+.notice[data-emphasis="destructive"] .primary-button {
+  background: var(--danger);
 }
 
 button:focus-visible,
 select:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--amber);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.widgets {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 180px;
-  margin-top: 12px;
-  overflow-y: auto;
-}
-
-.widgets[hidden] {
-  display: none;
-}
-
-.widget {
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.widget h3 {
-  margin: 0 0 4px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.7;
-}
-
-.widget p {
-  margin: 2px 0;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-
-.widget .clock-time {
-  font-size: 22px;
-  font-variant-numeric: tabular-nums;
-}
-
-.widget .error {
-  color: #ff8a9e;
 }

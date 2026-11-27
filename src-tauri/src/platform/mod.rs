@@ -46,6 +46,20 @@ impl Os {
     }
 }
 
+/// Whether `event` is a click on the Dock icon of the running app. Only macOS
+/// emits it.
+pub fn is_dock_reopen(event: &tauri::RunEvent) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        matches!(event, tauri::RunEvent::Reopen { .. })
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = event;
+        false
+    }
+}
+
 /// OS features a platform implementation can provide.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]

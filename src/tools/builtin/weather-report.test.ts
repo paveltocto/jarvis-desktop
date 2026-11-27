@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { testContext } from "../testing/context";
-import { weatherReport } from "./weather-report";
+import { fetchWeather, weatherReport } from "./weather-report";
 
 const sample = {
   current_condition: [
@@ -59,5 +59,21 @@ describe("weather_report", () => {
       testContext({ fetch: respond({}) }),
     );
     expect(result).toEqual({ ok: false, code: "failed", error: 'No weather data for "Atlantis".' });
+  });
+
+  it("reads today's high and low for the widget", async () => {
+    const fetch = respond({ ...sample, weather: [{ maxtempC: "24", mintempC: "18" }] });
+    await expect(fetchWeather("Lima", testContext({ fetch }))).resolves.toMatchObject({
+      area: "Lima",
+      tempC: "19",
+      highC: "24",
+      lowC: "18",
+    });
+  });
+
+  it("leaves the high and low empty without a forecast", async () => {
+    await expect(
+      fetchWeather("Lima", testContext({ fetch: respond(sample) })),
+    ).resolves.toMatchObject({ highC: null, lowC: null });
   });
 });

@@ -13,8 +13,12 @@ interface Palette {
   dim: string;
 }
 
-/** Amber theme of the legacy app. */
-const PALETTE: Palette = { primary: "#f59e0b", light: "#fde68a", dim: "#78350f" };
+/** Cyan HUD theme. Matches `--accent` and `--accent-soft` in `styles.css`. */
+const PALETTE: Palette = { primary: "#00c8ff", light: "#7ce8ff", dim: "#0e5a78" };
+
+/** Orb radius in CSS pixels at which nodes, links and glow are drawn full size. */
+const FULL_SIZE_RADIUS = 64;
+const MIN_DETAIL = 0.4;
 
 interface Motion {
   /** Rotation per frame around Y and X, in radians. */
@@ -116,6 +120,8 @@ export class Orb {
   #rotationX = 0;
   #rotationY = 0;
   #radius = 100;
+  /** Shrinks strokes and glow so a small orb does not turn into a blob. */
+  #detail = 1;
   #frame = 0;
   #lastFrame = 0;
   readonly #resizeObserver: ResizeObserver;
@@ -166,7 +172,8 @@ export class Orb {
     const { clientWidth, clientHeight } = this.#canvas;
     this.#canvas.width = Math.max(1, Math.round(clientWidth * ratio));
     this.#canvas.height = Math.max(1, Math.round(clientHeight * ratio));
-    this.#radius = Math.min(this.#canvas.width, this.#canvas.height) * 0.32;
+    this.#radius = Math.min(this.#canvas.width, this.#canvas.height) * 0.36;
+    this.#detail = Math.min(1, Math.max(MIN_DETAIL, this.#radius / (ratio * FULL_SIZE_RADIUS)));
   }
 
   #draw(time: number): void {
@@ -231,7 +238,7 @@ export class Orb {
         const depth = ((a.z + b.z) / 2 + radius) / (radius * 2);
         ctx.globalAlpha = Math.min(1, (1 - distance / reach) * 0.42 * depth * intensity);
         ctx.strokeStyle = a.color;
-        ctx.lineWidth = 0.5 + depth * 1.8;
+        ctx.lineWidth = (0.5 + depth * 1.8) * this.#detail;
         ctx.beginPath();
         ctx.moveTo(cx + a.x, cy + a.y);
         ctx.lineTo(cx + b.x, cy + b.y);
@@ -244,14 +251,15 @@ export class Orb {
       const depth = (node.z + radius) / (radius * 2);
       const scale = depth * 0.75 + 0.25;
       const size =
-        node.size * scale * (1 + (this.#state === "speaking" ? voice * 2 : 0)) + node.firing * 4;
+        (node.size * scale * (1 + (this.#state === "speaking" ? voice * 2 : 0)) + node.firing * 4) *
+        this.#detail;
       ctx.globalAlpha = Math.min(
         1,
         scale * (0.4 + Math.sin(node.pulse) * 0.25) * intensity + node.firing,
       );
       ctx.fillStyle = node.color;
       if (scale > 0.6 || node.firing > 0.1) {
-        ctx.shadowBlur = (15 + node.firing * 40) * intensity;
+        ctx.shadowBlur = (15 + node.firing * 40) * intensity * this.#detail;
         ctx.shadowColor = node.color;
       }
       ctx.beginPath();

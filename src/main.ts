@@ -22,7 +22,7 @@ import {
   VOICES,
 } from "./config";
 import { createDocumentStore } from "./data/document-store";
-import { weatherReport } from "./tools/builtin/weather-report";
+import { fetchWeather } from "./tools/builtin/weather-report";
 import { InvalidInput } from "./data/records";
 import {
   describeTrigger,
@@ -36,6 +36,7 @@ import { RULE_GRACE_MS, runRuleAction } from "./rules/runner";
 import { WIDGET_IDS, type WidgetId } from "./widgets/catalog";
 import { WidgetPanel } from "./widgets/panel";
 import { loadSettings, saveSettings } from "./settings/settings-store";
+import { bindTabs } from "./settings/tabs";
 import {
   formatGoalsForPrompt,
   importLegacyMemory,
@@ -69,6 +70,11 @@ function element<T extends HTMLElement>(id: string): T {
 }
 
 const ui = {
+  hud: element<HTMLElement>("hud"),
+  settingsTabs: element<HTMLDivElement>("settings-tabs"),
+  settingsScroll: element<HTMLDivElement>("settings-scroll"),
+  thresholdValue: element<HTMLOutputElement>("threshold-value"),
+  dismissSettings: element<HTMLButtonElement>("dismiss-settings"),
   orbCanvas: element<HTMLCanvasElement>("orb"),
   status: element<HTMLParagraphElement>("status"),
   hint: element<HTMLParagraphElement>("hint"),
@@ -111,24 +117,37 @@ const STATUS: Record<VoiceSnapshot["state"], string> = {
   speaking: "Speaking",
 };
 
-function idleHint(mode: ActivationMode, shortcut: string): string {
+/** The hint under the status, with the shortcut drawn as a key. */
+function idleHint(mode: ActivationMode, shortcut: string): (string | Node)[] {
+  const key = document.createElement("kbd");
+  key.textContent = shortcut;
   switch (mode) {
     case "wake_word":
-      return `Say “Hey JARVIS” or press ${shortcut}`;
+      return ["Say “Hey JARVIS” or press ", key];
     case "push_to_talk":
-      return `Hold ${shortcut} and speak`;
+      return ["Hold ", key, " and speak"];
     case "always_on":
-      return "Reconnecting…";
+      return ["Reconnecting…"];
   }
 }
+
+/** `danger` for errors, `destructive` for confirming something that cannot be undone. */
+type NoticeTone = "info" | "danger" | "destructive";
 
 interface NoticeAction {
   label: string;
   run: () => void;
 }
 
-function showNotice(message: string, action?: NoticeAction, cancel?: NoticeAction): void {
+function showNotice(
+  message: string,
+  action?: NoticeAction,
+  cancel?: NoticeAction,
+  tone: NoticeTone = "danger",
+): void {
   ui.noticeText.textContent = message;
+  ui.notice.dataset.tone = tone === "info" ? "info" : "danger";
+  ui.notice.dataset.emphasis = tone;
   ui.notice.hidden = false;
   ui.noticeAction.hidden = !action;
   ui.noticeAction.textContent = action?.label ?? "";
@@ -148,6 +167,9 @@ class App {
   readonly #store = createDocumentStore(documents);
   #widgetPanel: WidgetPanel | null = null;
   readonly #phrases = new PhraseMatcher();
+  readonly #selectTab = bindTabs(ui.settingsTabs, () => {
+    ui.settingsScroll.scrollTop = 0;
+  });
   readonly #speaker = new PcmSpeaker(() => this.#controller?.playbackFinished());
   #settings: Settings = DEFAULT_SETTINGS;
   #platform: PlatformInfo = { os: "other", arch: "unknown", capabilities: [] };
@@ -163,11 +185,12 @@ class App {
     this.#widgetPanel = new WidgetPanel(ui.widgets, {
       store: this.#store,
       reminders,
-      weather: (city) => this.#weatherText(city),
+      weather: (city) => fetchWeather(city, this.#toolContext()),
     });
     this.#renderWidgets();
     void this.#reconcileRules();
     this.#platform = await getPlatformInfo();
+    document.body.classList.toggle("platform-macos", this.#platform.os === "macos");
     this.#fillShortcutOptions();
     await this.#applyStoredShortcut();
 
@@ -225,10 +248,12 @@ class App {
         ),
       );
       if (now.getTime() - scheduledMs > RULE_GRACE_MS) {
-        showNotice(`Rule "${rule.name}" was skipped: it was due while JARVIS was not running.`, {
-          label: "Dismiss",
-          run: () => hideNotice(),
-        });
+        showNotice(
+          `Rule "${rule.name}" was skipped: it was due while JARVIS was not running.`,
+          { label: "Dismiss", run: () => hideNotice() },
+          undefined,
+          "info",
+        );
         return;
       }
       await this.#runRule(rule);
@@ -241,10 +266,12 @@ class App {
     const result = await runRuleAction(rule, (name, args) =>
       this.#registry.execute(name, args, this.#toolContext()),
     );
-    showNotice(`Rule "${rule.name}": ${result.ok ? result.output : result.error}`, {
-      label: "Dismiss",
-      run: () => hideNotice(),
-    });
+    showNotice(
+      `Rule "${rule.name}": ${result.ok ? result.output : result.error}`,
+      { label: "Dismiss", run: () => hideNotice() },
+      undefined,
+      result.ok ? "info" : "danger",
+    );
   }
 
   /** After a restart, rules that were due while JARVIS was closed get their next time, without running. */
@@ -272,6 +299,7 @@ class App {
       `Create rule "${rule.name}": ${describeTrigger(rule.trigger)}, then run ${rule.toolName}?`,
       { label: "Create rule", run: () => void this.#saveRule(rule) },
       { label: "Cancel", run: () => hideNotice() },
+      "info",
     );
   }
 
@@ -284,7 +312,12 @@ class App {
         }
         return [...list, rule];
       });
-      showNotice(`Rule "${rule.name}" created.`, { label: "Dismiss", run: () => hideNotice() });
+      showNotice(
+        `Rule "${rule.name}" created.`,
+        { label: "Dismiss", run: () => hideNotice() },
+        undefined,
+        "info",
+      );
       await this.#renderRules();
     } catch (error) {
       showNotice(`Rule not created: ${errorMessage(error)}`);
@@ -348,13 +381,6 @@ class App {
     this.#renderWidgets();
   }
 
-  async #weatherText(city: string): Promise<string> {
-    if (!city) throw new Error("Set a city in Settings first.");
-    const result = await weatherReport.execute({ city }, this.#toolContext());
-    if (!result.ok) throw new Error(result.error);
-    return result.output;
-  }
-
   /** Saves in the background; a failure is shown instead of being lost. */
   #persistSettings(): void {
     saveSettings(this.#store, this.#settings).catch((error: unknown) =>
@@ -415,6 +441,7 @@ class App {
         label: "Cancel",
         run: () => hideNotice(),
       },
+      "destructive",
     );
   }
 
@@ -488,13 +515,15 @@ class App {
 
   #render(snapshot: VoiceSnapshot): void {
     this.#orb.setState(snapshot.state);
+    ui.hud.dataset.state = this.#muted ? "muted" : snapshot.state;
     ui.status.textContent = this.#muted ? "Muted" : STATUS[snapshot.state];
-    ui.hint.textContent =
-      snapshot.state === "idle"
+    ui.hint.replaceChildren(
+      ...(snapshot.state === "idle"
         ? idleHint(snapshot.mode, shortcutLabel(this.#settings.voiceShortcut, this.#platform.os))
         : snapshot.state === "listening" && snapshot.mode === "push_to_talk"
-          ? "Release to send"
-          : "";
+          ? ["Release to send"]
+          : []),
+    );
     ui.mute.setAttribute("aria-pressed", String(this.#muted));
     ui.mode.value = snapshot.mode;
     if (snapshot.error) {
@@ -535,6 +564,8 @@ class App {
       () => void openUrl("https://aistudio.google.com/apikey"),
     );
     ui.closeSettings.addEventListener("click", () => this.#closeSettings());
+    ui.dismissSettings.addEventListener("click", () => this.#closeSettings());
+    ui.threshold.addEventListener("input", () => this.#showThreshold());
     ui.removeKey.addEventListener("click", () => void this.#removeKey());
     ui.importLegacy.addEventListener("click", () => void this.#importLegacyKeys());
     ui.importLegacyMemory.addEventListener("click", () => void this.#importLegacyMemory());
@@ -566,21 +597,36 @@ class App {
       events.audioError((message) => showNotice(message)),
       events.ruleDue((due) => void this.#onRuleDue(due.id, due.nextRunAtMs)),
       events.reminderDue((item) => {
-        showNotice(`Reminder: ${item.message}`, { label: "Dismiss", run: () => hideNotice() });
+        showNotice(
+          `Reminder: ${item.message}`,
+          { label: "Dismiss", run: () => hideNotice() },
+          undefined,
+          "info",
+        );
         this.#widgetPanel?.refresh();
       }),
       events.shellError((message) => showNotice(message)),
     ]);
   }
 
+  /** Shows the slider value and fills its track up to the thumb. */
+  #showThreshold(): void {
+    const { value, min, max } = ui.threshold;
+    const fill = (100 * (Number(value) - Number(min))) / (Number(max) - Number(min));
+    ui.threshold.style.setProperty("--fill", `${fill}%`);
+    ui.thresholdValue.value = Number(value).toFixed(2);
+  }
+
   #openSettings(intro: string): void {
     ui.settingsIntro.textContent = intro;
     ui.settingsIntro.hidden = !intro;
+    this.#selectTab(0);
     ui.apiKey.value = "";
     ui.apiKey.placeholder = this.#apiKey
       ? "Saved in the Keychain (leave empty to keep)"
       : "Paste your key";
     ui.threshold.value = String(this.#settings.wakeWordThreshold);
+    this.#showThreshold();
     ui.voice.value = this.#settings.voice;
     ui.voiceShortcut.value = this.#settings.voiceShortcut;
     ui.model.value = this.#settings.liveModel;
@@ -588,7 +634,7 @@ class App {
     for (const box of ui.widgetChecks)
       box.checked = this.#settings.visibleWidgets.includes(box.value as WidgetId);
     ui.removeKey.hidden = !this.#apiKey;
-    ui.closeSettings.hidden = !this.#apiKey;
+    this.#setSettingsDismissable(Boolean(this.#apiKey));
     ui.settingsError.hidden = true;
     ui.settingsStatus.hidden = true;
     void this.#loadProtocols();
@@ -597,6 +643,13 @@ class App {
     );
     ui.voiceView.hidden = true;
     ui.settingsView.hidden = false;
+    ui.hud.dataset.view = "settings";
+  }
+
+  /** Settings cannot be closed until there is an API key. */
+  #setSettingsDismissable(dismissable: boolean): void {
+    ui.closeSettings.hidden = !dismissable;
+    ui.dismissSettings.hidden = !dismissable;
   }
 
   async #loadProtocols(): Promise<void> {
@@ -610,6 +663,7 @@ class App {
   #closeSettings(): void {
     ui.settingsView.hidden = true;
     ui.voiceView.hidden = false;
+    ui.hud.dataset.view = "voice";
   }
 
   async #saveSettings(): Promise<void> {
@@ -683,7 +737,7 @@ class App {
         this.#apiKey = await secrets.get("gemini_api_key");
         ui.apiKey.placeholder = "Saved in the Keychain (leave empty to keep)";
         ui.removeKey.hidden = !this.#apiKey;
-        ui.closeSettings.hidden = !this.#apiKey;
+        this.#setSettingsDismissable(Boolean(this.#apiKey));
         await this.#startVoice();
       }
       const imported = report.imported.length

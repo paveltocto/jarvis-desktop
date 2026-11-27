@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipWeather, formatClock, summarizeGoals, WEATHER_MAX_CHARS } from "./logic";
+import { featuredGoal, formatClock, formatDue, summarizeGoals } from "./logic";
 import { parseWidgetList } from "./catalog";
 
 describe("formatClock", () => {
@@ -19,10 +19,32 @@ describe("summarizeGoals", () => {
   });
 });
 
-describe("clipWeather", () => {
-  it("collapses whitespace and cuts long text", () => {
-    expect(clipWeather("Lima:\n  19 °C   cloudy")).toBe("Lima: 19 °C cloudy");
-    expect(clipWeather("x".repeat(500))).toHaveLength(WEATHER_MAX_CHARS);
+describe("featuredGoal", () => {
+  const goal = (title: string, progress: number) => ({ title, progress, deadline: null });
+
+  it("skips finished goals", () => {
+    expect(featuredGoal([goal("done", 100), goal("open", 20)])?.title).toBe("open");
+  });
+
+  it("falls back to the first goal, or none", () => {
+    expect(featuredGoal([goal("done", 100)])?.title).toBe("done");
+    expect(featuredGoal([])).toBeNull();
+  });
+});
+
+describe("formatDue", () => {
+  // 11:00 PM on March 15 in Lima.
+  const now = new Date("2026-03-16T04:00:00Z");
+  const due = (iso: string) => formatDue(Date.parse(iso), now, "America/Lima");
+
+  it("names today and tomorrow in the time zone", () => {
+    expect(due("2026-03-16T04:30:00Z")).toBe("Today 11:30 PM");
+    expect(due("2026-03-16T05:30:00Z")).toBe("Tomorrow 12:30 AM");
+    expect(due("2026-03-17T04:30:00Z")).toBe("Tomorrow 11:30 PM");
+  });
+
+  it("shows the date for anything else", () => {
+    expect(due("2026-03-17T05:30:00Z")).toBe("Mar 17, 12:30 AM");
   });
 });
 
