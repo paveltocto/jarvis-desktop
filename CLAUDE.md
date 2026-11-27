@@ -46,7 +46,8 @@ A Tauri v2 app. **Rust** owns whatever must keep running while the window is hid
 
 - `src/backend.ts` wraps the Tauri commands and events (`platform_info` is wrapped in `src/platform.ts`). Names and types are mirrored by hand.
 - A new command goes in `commands.rs` (kept thin), in `generate_handler!` in `lib.rs`, and in `backend.ts`.
-- The webview gets no arbitrary access: `data.rs` only reads and writes allowlisted document names (`DocumentName` in TypeScript must match), `secrets.rs` allowlists secret names, and file pickers are opened by Rust so the webview never chooses a path.
+- The webview gets no arbitrary access: `data.rs` only reads and writes allowlisted document names (`DocumentName` in TypeScript must match), `secrets.rs` allowlists secret names (some the webview can store but never read), and file pickers are opened by Rust.
+- The one place the webview supplies paths is the file tools: `files.rs` confines them to Desktop, Documents and Downloads and applies a change only after a native dialog that Rust opens. Keep both checks in Rust.
 
 ### Voice
 
@@ -60,7 +61,9 @@ The system instruction is rebuilt for each session and includes stored memory, p
 
 One `ToolDefinition` per file in `src/tools/builtin/`, registered in `src/tools/index.ts`. Names are `snake_case`; descriptions are English text for the model. `ToolRegistry` only offers a tool when the current OS is in `platforms` and every capability in `requires` is reported by Rust. Tools return `ok()` or `fail()` and reach the outside world only through `ToolContext`; tests use `testContext()` from `src/tools/testing/context.ts` with overrides. A new `ToolContext` service must be added there and in `App.#toolContext()`.
 
-Quitting and rule creation only show a confirmation in the window, so the tool result must not claim the action already happened.
+Quitting, rule creation, sending messages or email and calendar changes only show a confirmation in the window, so the tool result must not claim the action already happened (use `askUser` in `src/tools/approval.ts`).
+
+Backend services that need a private credential or are blocked by CORS live in `src-tauri/src/services/` (OAuth, Telegram, YouTube, the Chrome controller, system figures). Telegram messages can only run the tools in `REMOTE_TOOLS` (`src/remote/telegram-agent.ts`); do not add one that touches files, mail or the browser.
 
 ### Platform layer
 

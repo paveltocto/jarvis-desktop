@@ -71,3 +71,39 @@ Open **Activity Monitor**, search for "jarvis" and also include the "WebKit" pro
 | Mac model and macOS version                                                   |       |
 
 For lower numbers, also measure a release build: `pnpm tauri build`, then open `src-tauri/target/release/bundle/macos/JARVIS.app`.
+
+## Phase 3
+
+Run the automated live checks first (they need Chrome and the network):
+
+```bash
+cd src-tauri && cargo test live_ -- --ignored
+```
+
+### Without any account
+
+- [ ] "¿Qué noticias hay hoy?": answers using Google Search and the voice session still calls the app's tools.
+- [ ] "¿Cómo está el sistema?": plausible CPU, memory and disk figures.
+- [ ] "Pon un video de jazz en YouTube": a video opens.
+- [ ] "Abre example.com en tu navegador y léeme la página". Then quit JARVIS: its Chrome window closes, and browsing works again after a restart.
+
+### Files and documents
+
+- [ ] The first access to Desktop, Documents or Downloads shows the macOS permission prompt.
+- [ ] "Lista mis descargas" answers without a dialog.
+- [ ] "Crea un archivo prueba.txt en el escritorio": a native dialog appears. **Cancel** creates nothing and JARVIS says so; **Allow** creates it.
+- [ ] While a dialog is open, the app stays responsive. Leaving it open for two minutes closes the voice session.
+- [ ] Delete moves the file to the Trash, where it can be restored.
+- [ ] "Hazme un documento de Word / un Excel / una presentación sobre …": each file opens correctly.
+- [ ] "Organiza mis descargas" (try it on a copy first): the dialog lists what will move.
+- [ ] Asking for a file outside the three folders, for example in your home folder, is refused.
+
+### Accounts (Settings › Services)
+
+- [ ] Google: create an OAuth client of type **Desktop app**, enable the Gmail and Calendar APIs, add yourself as a test user, then **Connect…**. Ask for unread email and today's events.
+- [ ] Sending an email and creating or deleting an event show a question in the window; nothing happens on **Cancel**.
+- [ ] Spotify: create an app with the redirect URI `http://127.0.0.1:43821/callback`, **Connect…**, then play, pause, skip and set the volume (Premium).
+- [ ] OpenRouter or DeepSeek: "Pregúntale a DeepSeek …".
+- [ ] Discord webhook: a message arrives only after confirming.
+- [ ] Telegram: save the bot token and chat id, tick **Answer my Telegram messages** and Save. A message gets a reply, also with the window hidden. A message from another account gets nothing.
+- [ ] "Dame el resumen de la mañana".

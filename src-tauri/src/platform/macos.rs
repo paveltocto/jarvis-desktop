@@ -5,13 +5,29 @@
 //! capability must not be listed.
 
 use super::{Capability, Platform, PlatformError, PrivacyPane, Result, validate_app_name};
+use std::path::Path;
 use std::process::Command;
+use trash::macos::{DeleteMethod, TrashContextExtMacos};
 
 pub struct MacosPlatform;
 
 impl Platform for MacosPlatform {
     fn capabilities(&self) -> Vec<Capability> {
-        vec![Capability::OpenApp, Capability::PrivacySettings]
+        vec![
+            Capability::OpenApp,
+            Capability::PrivacySettings,
+            Capability::Trash,
+        ]
+    }
+
+    /// Uses `NSFileManager`, which needs no Automation permission (the
+    /// default asks Finder through AppleScript).
+    fn move_to_trash(&self, path: &Path) -> Result<()> {
+        let mut context = trash::TrashContext::default();
+        context.set_delete_method(DeleteMethod::NsFileManager);
+        context.delete(path).map_err(|error| PlatformError::Failed {
+            message: format!("could not move to the Trash: {error}"),
+        })
     }
 
     /// `open -a` resolves names through Launch Services, case-insensitively

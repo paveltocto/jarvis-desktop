@@ -84,6 +84,12 @@ export const SPEECH_LEVEL = 0.02;
 /** Audio kept while the session connects (~5 s of 32 ms blocks). */
 const MAX_BUFFERED_BLOCKS = 160;
 const ALWAYS_ON_RETRY_MS = 5_000;
+/**
+ * Longest the session waits for a tool. A tool may be waiting for the user to
+ * answer a dialog, and the microphone must not stay open until they do. It is
+ * longer than the slowest network timeout a tool uses.
+ */
+export const TOOL_WAIT_LIMIT_MS = 100_000;
 
 export class VoiceController {
   #options: VoiceControllerOptions;
@@ -274,6 +280,10 @@ export class VoiceController {
 
   async #runTools(calls: ToolCall[], generation: number): Promise<void> {
     this.#clearSilenceTimer();
+    const limit = setTimeout(() => {
+      if (generation !== this.#generation || this.#options.mode === "always_on") return;
+      void this.#closeSession().then(() => this.#setState("idle"));
+    }, TOOL_WAIT_LIMIT_MS);
     const responses = await Promise.all(
       calls.map(async ({ id, name, args }) => {
         const result = await this.#options.executeTool(name, args);
@@ -282,7 +292,7 @@ export class VoiceController {
           : { error: result.error, code: result.code };
         return { id, name, response };
       }),
-    );
+    ).finally(() => clearTimeout(limit));
     if (generation !== this.#generation || !this.#session) return;
     this.#session.sendToolResponses(responses);
     if (this.#state === "listening") this.#armSilenceTimer();

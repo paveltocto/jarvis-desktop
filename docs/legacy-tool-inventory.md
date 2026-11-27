@@ -44,7 +44,7 @@ Parameter schemas for all 66 tools are in [`legacy/tool-parameters.json`](legacy
 | -------------------- | ------------- | -------- | ----- | --------------------------------------------------------------------------------------------------------- |
 | `open_app`           | Working       | Port     | 1     | **Done.** macOS: `open -a`. Platform capability `open_app`.                                               |
 | `weather_report`     | Working       | Port     | 1     | **Done.** wttr.in JSON API, no API key.                                                                   |
-| `system_monitor`     | Working       | Port     | 3     | `sysinfo` crate, cross-platform.                                                                          |
+| `system_monitor`     | Working       | Port     | 3     | **Done**, except battery level, which `sysinfo` does not provide. CPU, memory, disks and top processes.   |
 | `window_control`     | Working       | Port     | 4     | Capability `windows`.                                                                                     |
 | `computer_settings`  | Working       | Merge    | 4     | Merged with `contextual_control` into one settings tool (volume, brightness, Do Not Disturb, power mode). |
 | `contextual_control` | Working       | Merge    | 4     | See `computer_settings`.                                                                                  |
@@ -66,36 +66,36 @@ Parameter schemas for all 66 tools are in [`legacy/tool-parameters.json`](legacy
 
 ## Files and documents
 
-| Tool                   | Legacy status | Decision | Phase | Notes                                                             |
-| ---------------------- | ------------- | -------- | ----- | ----------------------------------------------------------------- |
-| `file_controller`      | Working       | Port     | 3     | 15 parameters; consider splitting into smaller tools.             |
-| `smart_file_organizer` | Working       | Port     | 3     | Duplicate detection by hash (use SHA-256 instead of MD5).         |
-| `document_creator`     | Working       | Port     | 3     | `pptxgenjs`, `docx`.                                              |
-| `file_processor`       | Missing       | Defer    | —     | Image, audio, video and spreadsheet processing for dropped files. |
+| Tool                   | Legacy status | Decision | Phase | Notes                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ------------- | -------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `file_controller`      | Working       | Port     | 3     | **Done**, limited to Desktop, Documents and Downloads; hidden files and symbolic links are refused. Rust asks in a native dialog before every change; delete uses the Trash (macOS only for now). `disk_usage` moved to `system_monitor`, `organize_desktop` to `smart_file_organizer`. `gui_search` and `select_and_copy` (Windows only) are not ported. |
+| `smart_file_organizer` | Working       | Port     | 3     | **Done.** `organize`, `find_duplicates` (SHA-256, deletes nothing) and `disk_space`.                                                                                                                                                                                                                                                                      |
+| `document_creator`     | Working       | Port     | 3     | **Done.** Word, Excel, PowerPoint and text on the Desktop, after confirmation. Excel files come from a small writer on `fflate`, because the CSP blocks the workers spreadsheet libraries use. No Google Docs or Sheets.                                                                                                                                  |
+| `file_processor`       | Missing       | Defer    | —     | Image, audio, video and spreadsheet processing for dropped files.                                                                                                                                                                                                                                                                                         |
 
 ## Web and media
 
-| Tool              | Legacy status | Decision  | Phase | Notes                  |
-| ----------------- | ------------- | --------- | ----- | ---------------------- |
-| `youtube_video`   | Working       | Port      | 3     |                        |
-| `browser_control` | Working       | Port      | 3     | `chromiumoxide` (CDP). |
-| `spotify_control` | Working       | Port      | 3     | Spotify Web API.       |
-| `web_search`      | Stub          | Implement | 3     |                        |
+| Tool              | Legacy status | Decision  | Phase | Notes                                                                                                                                                     |
+| ----------------- | ------------- | --------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `youtube_video`   | Working       | Port      | 3     | **Done.** `play` opens the first result and says so when it can only open the results.                                                                    |
+| `browser_control` | Working       | Port      | 3     | **Done.** `chromiumoxide` drives a Chrome window with its own profile: open, search, tabs, scroll, read. No clicking or typing. Needs Chrome or Chromium. |
+| `spotify_control` | Working       | Port      | 3     | **Done**, not yet tried with a real account. Web API with the user's own app (PKCE); playback control needs Premium. No media-key fallback.               |
+| `web_search`      | Stub          | Implement | 3     | **Done**, not yet checked against the live API. Gemini's built-in Google Search in the Live session.                                                      |
 
 ## Communication
 
-| Tool                     | Legacy status | Decision  | Phase | Notes                                               |
-| ------------------------ | ------------- | --------- | ----- | --------------------------------------------------- |
-| `unified_communications` | Working       | Port      | 3     | Email, Telegram, Discord, WhatsApp.                 |
-| `send_message`           | Missing       | Merge     | 3     | Into `unified_communications`.                      |
-| `whatsapp`               | Working       | Redesign  | 4     | macOS: `whatsapp://send` URL scheme plus key press. |
-| `gmail_control`          | Stub          | Implement | 3     | Gmail REST API with OAuth.                          |
-| `google_calendar`        | Stub          | Implement | 3     | Calendar REST API with OAuth.                       |
-| `google_drive`           | Stub          | Defer     | —     |                                                     |
-| `google_maps`            | Stub          | Defer     | —     |                                                     |
-| `social_media`           | Stub          | Defer     | —     |                                                     |
+| Tool                     | Legacy status | Decision  | Phase | Notes                                                                                                                                           |
+| ------------------------ | ------------- | --------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unified_communications` | Working       | Port      | 3     | **Done** for Telegram (own chat only) and Discord (own webhook), both after confirmation; `email` opens a draft. WhatsApp waits for phase 4.    |
+| `send_message`           | Missing       | Merge     | 3     | **Done**: merged into `unified_communications`.                                                                                                 |
+| `whatsapp`               | Working       | Redesign  | 4     | macOS: `whatsapp://send` URL scheme plus key press.                                                                                             |
+| `gmail_control`          | Stub          | Implement | 3     | **Done**, not yet tried with a real account. Unread, search, read and send (after confirmation); the user brings their own Google OAuth client. |
+| `google_calendar`        | Stub          | Implement | 3     | **Done**, not yet tried with a real account. List, create and delete on the primary calendar; changes need confirmation.                        |
+| `google_drive`           | Stub          | Defer     | —     |                                                                                                                                                 |
+| `google_maps`            | Stub          | Defer     | —     |                                                                                                                                                 |
+| `social_media`           | Stub          | Defer     | —     |                                                                                                                                                 |
 
-The Telegram bot (`core/telegram_bot.py`) is not a tool, but it is ported as a backend service in phase 3.
+The Telegram bot (`core/telegram_bot.py`) is not a tool. **Done**, not yet tried with a real bot: `services/telegram.rs` polls for the owner's messages (off by default) and the webview answers with DeepSeek or OpenRouter. It reaches only time, weather, system use, reminders, goals and Spotify; the legacy screenshot, typing, window and file commands are not available remotely.
 
 ## Productivity and automation
 
@@ -108,20 +108,20 @@ The Telegram bot (`core/telegram_bot.py`) is not a tool, but it is ported as a b
 | `rules_engine`         | Partial       | Complete  | 2     | **Done.** Phrase rules run when the user says the phrase (Gemini input transcription). Schedules run daily, weekly or every N minutes. Creating a rule asks for confirmation in the window. |
 | `proactive_automation` | Working       | Merge     | 2     | **Done** through `rules_engine`, which is the single automation engine.                                                                                                                     |
 | `scheduler`            | Stub          | Implement | 2     | **Done** for one-shot reminders (Rust scheduler) and for recurring rules, which the Rust scheduler reports and the webview runs.                                                            |
-| `morning_brief`        | Stub          | Implement | 3     | Weather, calendar, email summary.                                                                                                                                                           |
+| `morning_brief`        | Stub          | Implement | 3     | **Done.** Weather, calendar, unread email, reminders and goals; a section that cannot be read says why.                                                                                     |
 
 ## AI and development
 
 | Tool               | Legacy status | Decision | Phase | Notes                                                                                                                             |
 | ------------------ | ------------- | -------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `openrouter_agent` | Working       | Port     | 3     |                                                                                                                                   |
+| `openrouter_agent` | Working       | Port     | 3     | **Done**, not yet tried with a real key. OpenRouter or DeepSeek. Local Ollama is not ported.                                      |
 | `code_helper`      | Working       | Port     | 6     | Runs code; needs the sandbox.                                                                                                     |
 | `tool_creator`     | Working       | Redesign | 6     | Generates JavaScript run in `rquickjs` instead of Python. Legacy declaration requires a `description` parameter it never defines. |
 | `auto_programmer`  | Working       | Redesign | 6     | Same sandbox as `tool_creator`.                                                                                                   |
 | `self_edit`        | Working       | Redesign | 6     | A compiled app cannot edit its own source. Scope it to user-created tool scripts and settings.                                    |
 | `dev_agent`        | Missing       | Defer    | —     | Legacy declaration requires a `description` parameter it never defines.                                                           |
 
-The legacy `deepseek_agent.py` exists but is not declared as a tool; it is called internally. Port it with `openrouter_agent` in phase 3.
+The legacy `deepseek_agent.py` exists but is not declared as a tool; it is called internally. **Done** as the `deepseek` provider of `openrouter_agent`.
 
 ## Deferred (stubs and missing modules)
 

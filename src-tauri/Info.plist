@@ -5,6 +5,12 @@
 <dict>
   <key>NSMicrophoneUsageDescription</key>
   <string>JARVIS listens for "Hey JARVIS" on this Mac and streams your voice to Gemini only after the wake word.</string>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>JARVIS works with files on your Desktop when you ask it to. Every change asks you first.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>JARVIS works with files in Documents when you ask it to. Every change asks you first.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>JARVIS works with files in Downloads when you ask it to. Every change asks you first.</string>
   <!-- Keep background services (wake word, scheduler) running when the window is hidden. -->
   <key>NSAppSleepDisabled</key>
   <true/>

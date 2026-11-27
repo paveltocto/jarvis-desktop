@@ -7,11 +7,13 @@
 pub mod audio;
 pub mod commands;
 pub mod data;
+pub mod files;
 pub mod legacy_import;
 pub mod platform;
 pub mod reminders;
 pub mod rules;
 pub mod secrets;
+pub mod services;
 pub mod shell;
 
 use std::sync::Arc;
@@ -29,6 +31,8 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(audio::AudioService::new())
         .manage(shell::VoiceShortcut::default())
+        .manage(services::oauth::TokenCache::default())
+        .manage(commands::FileDialogLock::default())
         // Closing the window only hides it: JARVIS keeps listening until the
         // user quits from the tray.
         .on_window_event(|window, event| {
@@ -42,7 +46,10 @@ pub fn run() {
             let reminders = Arc::new(reminders::Reminders::load(data_dir.clone())?);
             app.manage(data_dir.clone());
             app.manage(Arc::clone(&reminders));
-            reminders::spawn_scheduler(app.handle().clone(), reminders, data_dir);
+            let profile = data_dir.0.join("browser-profile");
+            app.manage(services::browser::BrowserService::new(profile));
+            reminders::spawn_scheduler(app.handle().clone(), reminders, data_dir.clone());
+            services::telegram::spawn_listener(app.handle().clone(), data_dir);
             shell::setup_tray(app)?;
             shell::register_voice_shortcut(app.handle());
             Ok(())
@@ -59,6 +66,17 @@ pub fn run() {
             commands::secret_get,
             commands::secret_set,
             commands::secret_delete,
+            commands::secret_exists,
+            commands::system_stats,
+            commands::youtube_search,
+            commands::telegram_send,
+            commands::oauth_status,
+            commands::oauth_connect,
+            commands::oauth_disconnect,
+            commands::oauth_access_token,
+            commands::browser_run,
+            commands::files_query,
+            commands::files_change,
             commands::voice_shortcut_set,
             commands::data_read,
             commands::data_write,
@@ -72,6 +90,11 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building the JARVIS application")
         .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Chrome would keep running and keep its profile locked.
+                let browser = app.state::<services::browser::BrowserService>();
+                tauri::async_runtime::block_on(browser.close());
+            }
             if platform::is_dock_reopen(&event) {
                 shell::show_main_window(app);
             }

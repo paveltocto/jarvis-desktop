@@ -23,6 +23,8 @@ export interface Settings {
   visibleWidgets: WidgetId[];
   /** City for the weather widget. Empty means not set. */
   weatherCity: string;
+  /** Answer messages from the user's Telegram chat. Read by `services/telegram.rs`. */
+  telegramRemote: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceShortcut: DEFAULT_VOICE_SHORTCUT,
   visibleWidgets: ["clock"],
   weatherCity: "",
+  telegramRemote: false,
 };
 
 /** localStorage key used before settings moved to the document store. */
@@ -101,6 +104,9 @@ export function parseSettings(raw: unknown): Settings {
   }
   if (Array.isArray(value.visibleWidgets)) {
     settings.visibleWidgets = parseWidgetList(value.visibleWidgets);
+  }
+  if (typeof value.telegramRemote === "boolean") {
+    settings.telegramRemote = value.telegramRemote;
   }
   if (typeof value.weatherCity === "string") {
     settings.weatherCity = value.weatherCity.trim().slice(0, 80);

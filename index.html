@@ -49,6 +49,23 @@
         </div>
       </header>
 
+      <div
+        id="approval"
+        class="approval"
+        role="alertdialog"
+        aria-labelledby="approval-title"
+        aria-describedby="approval-detail"
+        hidden
+      >
+        <p id="approval-title" class="approval-title"></p>
+        <pre id="approval-detail" class="approval-detail" tabindex="0"></pre>
+        <p id="approval-waiting" class="muted small"></p>
+        <div class="approval-actions">
+          <button id="approval-cancel" class="secondary-button" type="button">Cancel</button>
+          <button id="approval-confirm" class="primary-button" type="button"></button>
+        </div>
+      </div>
+
       <section id="voice-view" class="view">
         <canvas id="orb" class="orb" data-tauri-drag-region></canvas>
         <p id="status" class="status" aria-live="polite">Starting…</p>
@@ -134,6 +151,17 @@
             tabindex="-1"
           >
             Automations
+          </button>
+          <button
+            id="tab-services"
+            class="tab"
+            type="button"
+            role="tab"
+            aria-controls="panel-services"
+            aria-selected="false"
+            tabindex="-1"
+          >
+            Services
           </button>
         </div>
         <form id="settings-form" class="settings-form">
@@ -247,6 +275,25 @@
                   Spotify".
                 </p>
               </section>
+            </div>
+
+            <div
+              id="panel-services"
+              class="tab-panel"
+              role="tabpanel"
+              aria-labelledby="tab-services"
+              hidden
+            >
+              <label class="check-row">
+                <input id="telegram-remote" type="checkbox" />
+                Answer my Telegram messages
+              </label>
+              <p class="muted small">
+                Only your chat id is answered, using DeepSeek or OpenRouter. From Telegram, JARVIS
+                can tell the time and weather, report system use, manage reminders and goals, and
+                control Spotify.
+              </p>
+              <div id="services" class="services"></div>
             </div>
           </div>
           <div class="settings-footer">
