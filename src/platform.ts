@@ -15,7 +15,8 @@ export type Capability =
   | "do_not_disturb"
   | "power_mode"
   | "reveal_in_file_manager"
-  | "privacy_settings";
+  | "privacy_settings"
+  | "trash";
 
 /** Mirrors `platform::PlatformInfo`. */
 export interface PlatformInfo {

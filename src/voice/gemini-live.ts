@@ -39,7 +39,11 @@ export function createGeminiSessionFactory(options: GeminiLiveOptions): SessionF
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: options.voice } } },
         systemInstruction: await options.systemInstruction(),
         inputAudioTranscription: {},
-        ...(functionDeclarations.length > 0 ? { tools: [{ functionDeclarations }] } : {}),
+        // Google Search runs on Gemini's side, so it is not a registry tool.
+        tools: [
+          { googleSearch: {} },
+          ...(functionDeclarations.length > 0 ? [{ functionDeclarations }] : []),
+        ],
       },
       callbacks: {
         onmessage: (message) => {

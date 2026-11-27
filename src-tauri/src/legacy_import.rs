@@ -19,7 +19,13 @@ const MAX_DOCUMENT_BYTES: u64 = 1024 * 1024;
 
 /// Legacy key name and the Keychain name it becomes. Add a row when a
 /// provider is ported; the secrets allowlist must list the Keychain name too.
-const MAPPING: &[(&str, &str)] = &[("gemini_api_key", "gemini_api_key")];
+const MAPPING: &[(&str, &str)] = &[
+    ("gemini_api_key", "gemini_api_key"),
+    ("openrouter_api_key", "openrouter_api_key"),
+    ("deepseek_api_key", "deepseek_api_key"),
+    ("telegram_bot_token", "telegram_bot_token"),
+    ("telegram_chat_id", "telegram_chat_id"),
+];
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportError {
@@ -72,7 +78,13 @@ pub fn plan(text: &str) -> Result<Plan, ImportError> {
     let mut secrets = Vec::new();
     let mut skipped = Vec::new();
     for (name, value) in object {
-        let text = value.as_str().map(str::trim).unwrap_or_default();
+        // Chat ids are sometimes written as numbers.
+        let number = value.as_i64().map(|number| number.to_string());
+        let text = value
+            .as_str()
+            .map(str::trim)
+            .or(number.as_deref())
+            .unwrap_or_default();
         let blank = text.is_empty() || is_placeholder(text);
         match MAPPING.iter().find(|(legacy, _)| legacy == name) {
             Some((_, target)) if !blank => secrets.push((*target, text.to_owned())),
@@ -182,7 +194,7 @@ mod tests {
         let plan = plan(
             r#"{
                 "gemini_api_key": "AIza-real-looking-value",
-                "telegram_bot_token": "123:ABC",
+                "groq_api_key": "gsk-abc",
                 "deepseek_api_key": "YOUR_DEEPSEEK_API_KEY_HERE",
                 "jarvis_voice": "Charon"
             }"#,
@@ -194,13 +206,19 @@ mod tests {
         assert!(
             plan.skipped
                 .iter()
-                .any(|s| s.name == "telegram_bot_token" && s.reason.contains("not used yet"))
+                .any(|s| s.name == "groq_api_key" && s.reason.contains("not used yet"))
         );
         assert!(
             plan.skipped
                 .iter()
                 .any(|s| s.name == "deepseek_api_key" && s.reason.contains("placeholder"))
         );
+    }
+
+    #[test]
+    fn accepts_a_numeric_chat_id() {
+        let plan = plan(r#"{"telegram_chat_id": 123456}"#).expect("valid file");
+        assert_eq!(plan.secrets, [("telegram_chat_id", "123456".to_owned())]);
     }
 
     #[test]

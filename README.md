@@ -2,7 +2,7 @@
 
 A voice-first desktop assistant inspired by JARVIS, built with [Tauri v2](https://v2.tauri.app/), Rust and TypeScript. It is the successor of the Python app in [`paveltocto/jarvis-ai`](https://github.com/paveltocto/jarvis-ai).
 
-**Status:** phase 1 (voice proof of concept) is implemented and awaiting testing on a Mac: see [TESTING_ON_MAC.md](docs/TESTING_ON_MAC.md). See the [migration plan](docs/MIGRATION_PLAN.md) for the roadmap and the [legacy tool inventory](docs/legacy-tool-inventory.md) for what is being ported.
+**Status:** phases 1 to 3 are implemented (two phase 2 tools are still open) and awaiting testing on a Mac: see [TESTING_ON_MAC.md](docs/TESTING_ON_MAC.md). See the [migration plan](docs/MIGRATION_PLAN.md) for the roadmap and the [legacy tool inventory](docs/legacy-tool-inventory.md) for what is being ported.
 
 **Platforms:** macOS first (Apple Silicon and Intel). Windows is planned; the code is structured so it can be added without a rewrite.
 
@@ -16,8 +16,8 @@ A voice-first desktop assistant inspired by JARVIS, built with [Tauri v2](https:
 
 - Floating holographic orb window, menu bar icon, single instance.
 - Voice conversation with Gemini Live in three modes: **"Hey JARVIS"** (local wake word, nothing is sent before it), **push to talk** (hold ⌃⌥ Space by default, configurable in Settings) and **always listening**.
-- Tools: open apps, current weather, current time.
-- Gemini API key stored in the macOS Keychain.
+- Tools: apps, weather, time, memory, goals, reminders and automation rules; web search, YouTube and a controlled Chrome window; files and Office documents in Desktop, Documents and Downloads; Gmail, Google Calendar, Spotify, Telegram, Discord and a morning briefing. Accounts are set up in Settings › Services; file changes and anything that is sent ask first.
+- API keys and tokens stored in the macOS Keychain.
 
 ## Prerequisites (macOS)
 

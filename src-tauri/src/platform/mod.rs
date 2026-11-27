@@ -60,6 +60,20 @@ pub fn is_dock_reopen(event: &tauri::RunEvent) -> bool {
     }
 }
 
+/// Creates a symbolic link for tests. `false` where that is not possible.
+#[cfg(test)]
+pub fn create_test_symlink(target: &Path, link: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link).is_ok()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (target, link);
+        false
+    }
+}
+
 /// OS features a platform implementation can provide.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -75,6 +89,7 @@ pub enum Capability {
     PowerMode,
     RevealInFileManager,
     PrivacySettings,
+    Trash,
 }
 
 /// Summary of the running platform, sent to the frontend.
@@ -194,6 +209,10 @@ pub trait Platform: Send + Sync {
     /// Runs a UI automation script (AppleScript/JXA on macOS, UI Automation on Windows).
     fn ui_script(&self, _script: &str) -> Result<String> {
         unsupported("ui_scripting")
+    }
+    /// Moves a file or folder to the Trash (Recycle Bin), where it can be restored.
+    fn move_to_trash(&self, _path: &Path) -> Result<()> {
+        unsupported("trash")
     }
     fn run_shell(&self, _command: &str) -> Result<ShellOutput> {
         unsupported("shell")

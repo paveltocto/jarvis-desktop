@@ -27,9 +27,98 @@ export type ToolErrorCode = "unknown_tool" | "unsupported" | "invalid_arguments"
 export type ToolResult =
   { ok: true; output: string } | { ok: false; code: ToolErrorCode; error: string };
 
-/** OS operations implemented by the Rust platform layer. */
+/** OS operations implemented by the Rust backend. */
 export interface SystemApi {
   openApp(name: string): Promise<void>;
+  stats(sort: ProcessSort, processCount: number): Promise<SystemStats>;
+}
+
+export type ProcessSort = "cpu" | "memory";
+
+/** Mirrors `services::system_stats::SystemStats`. */
+export interface SystemStats {
+  cpuPercent: number;
+  memoryUsedBytes: number;
+  memoryTotalBytes: number;
+  disks: { mountPoint: string; totalBytes: number; freeBytes: number }[];
+  processes: { name: string; cpuPercent: number; memoryBytes: number }[];
+}
+
+/** Mirrors `services::browser::Request`. */
+export type BrowserRequest =
+  | { action: "go_to"; url: string }
+  | { action: "search"; query: string }
+  | { action: "new_tab"; url?: string }
+  | { action: "close_tab" }
+  | { action: "scroll"; direction: "up" | "down" }
+  | { action: "read" };
+
+export interface WebApi {
+  /** Opens a web or mail link in the user's default app. */
+  openUrl(url: string): Promise<void>;
+  /** URL of the first video for the search, or `null` when none was found. */
+  youtubeSearch(query: string): Promise<string | null>;
+  /** The browser window JARVIS controls. */
+  browser(request: BrowserRequest): Promise<string>;
+}
+
+/** Mirrors `files::Query`. */
+export type FileQuery =
+  | { action: "list" | "read" | "info" | "duplicates"; path: string }
+  | { action: "find"; path: string; name?: string; extension?: string }
+  | { action: "largest"; path: string; count?: number };
+
+/** Mirrors `files::Change`. */
+export type FileChange =
+  | { action: "create_folder" | "delete" | "open" | "organize"; path: string }
+  | { action: "write"; path: string; content: string; overwrite: boolean }
+  | {
+      action: "edit";
+      path: string;
+      mode: "replace" | "append" | "prepend";
+      oldText?: string;
+      newText: string;
+    }
+  | { action: "move" | "copy"; path: string; destination: string }
+  | { action: "rename"; path: string; newName: string }
+  | { action: "create_document"; fileName: string; dataBase64: string };
+
+/** Files in Desktop, Documents and Downloads (`files.rs`). */
+export interface FilesApi {
+  query(query: FileQuery): Promise<string>;
+  /** Rust asks the user in a native dialog and rejects when they decline. */
+  change(change: FileChange): Promise<string>;
+}
+
+/** Secrets the webview may read; mirrors `READABLE` in `secrets.rs`. */
+export type ReadableSecret =
+  "gemini_api_key" | "openrouter_api_key" | "deepseek_api_key" | "discord_webhook_url";
+
+export type OAuthProvider = "google" | "spotify";
+
+export interface AccountsApi {
+  /** A short-lived access token. Rejects when the account is not connected. */
+  accessToken(provider: OAuthProvider): Promise<string>;
+}
+
+export interface MessagingApi {
+  /** Sends to the user's own Telegram chat. Ask the user first. */
+  telegram(text: string): Promise<void>;
+}
+
+/** Something that leaves the machine or changes an account, waiting for the user. */
+export interface Approval {
+  /** The question, with everything the user needs to decide. */
+  title: string;
+  detail: string;
+  confirmLabel: string;
+  /** Runs only after the user confirms. Resolves with what happened. */
+  run(): Promise<string>;
+}
+
+export interface ApprovalsApi {
+  /** Shows the question in the window. Resolves once shown, not once answered. */
+  request(approval: Approval): Promise<void>;
 }
 
 /** A reminder as stored by the Rust scheduler. */
@@ -76,6 +165,12 @@ export interface ToolContext {
   app: AppApi;
   widgets: WidgetsApi;
   rules: RulesApi;
+  web: WebApi;
+  files: FilesApi;
+  secrets: { get(name: ReadableSecret): Promise<string | null> };
+  accounts: AccountsApi;
+  messaging: MessagingApi;
+  approvals: ApprovalsApi;
   /** Names of the tools rules may run (the registry's tools, minus the excluded ones). */
   knownTools: readonly string[];
 }

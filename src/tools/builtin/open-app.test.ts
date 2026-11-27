@@ -7,7 +7,7 @@ describe("open_app", () => {
     const open = vi.fn().mockResolvedValue(undefined);
     const result = await openApp.execute(
       { app_name: " Safari " },
-      testContext({ system: { openApp: open } }),
+      testContext({ system: { ...testContext().system, openApp: open } }),
     );
     expect(open).toHaveBeenCalledWith("Safari");
     expect(result).toEqual({ ok: true, output: "Opened Safari." });
@@ -19,7 +19,7 @@ describe("open_app", () => {
       .mockRejectedValue({ kind: "failed", message: "Unable to find application named 'Nope'" });
     const result = await openApp.execute(
       { app_name: "Nope" },
-      testContext({ system: { openApp: open } }),
+      testContext({ system: { ...testContext().system, openApp: open } }),
     );
     expect(result).toEqual({
       ok: false,

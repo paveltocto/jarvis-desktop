@@ -28,7 +28,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://wttr.in"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://wttr.in https://openrouter.ai https://api.deepseek.com https://discord.com https://gmail.googleapis.com https://www.googleapis.com https://api.spotify.com"
     },
     "macOSPrivateApi": true
   },

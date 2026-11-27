@@ -5,7 +5,18 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { DocumentBackend, DocumentName } from "./data/document-store";
-import type { Reminder, ReminderApi } from "./tools/types";
+import type { ServiceSecret } from "./settings/services";
+import type {
+  AccountsApi,
+  BrowserRequest,
+  FilesApi,
+  OAuthProvider,
+  ProcessSort,
+  ReadableSecret,
+  Reminder,
+  ReminderApi,
+  SystemStats,
+} from "./tools/types";
 import type { AudioBackend } from "./voice/controller";
 
 export interface InputDeviceInfo {
@@ -15,7 +26,8 @@ export interface InputDeviceInfo {
 }
 
 export type PrivacyPane = "microphone" | "accessibility" | "screenRecording" | "camera";
-export type SecretName = "gemini_api_key";
+/** Mirrors the allowlists in `secrets.rs`. */
+export type SecretName = ReadableSecret | ServiceSecret;
 
 export const audioBackend: AudioBackend & { startAudio(): Promise<InputDeviceInfo> } = {
   startAudio: () => invoke<InputDeviceInfo>("audio_start"),
@@ -35,10 +47,40 @@ export const audioBackend: AudioBackend & { startAudio(): Promise<InputDeviceInf
 export const system = {
   openApp: (name: string) => invoke<undefined>("open_app", { name }),
   openPrivacySettings: (pane: PrivacyPane) => invoke<undefined>("open_privacy_settings", { pane }),
+  stats: (sort: ProcessSort, processCount: number) =>
+    invoke<SystemStats>("system_stats", { sort, processCount }),
+};
+
+export const web = {
+  youtubeSearch: (query: string) => invoke<string | null>("youtube_search", { query }),
+  browser: (request: BrowserRequest) => invoke<string>("browser_run", { request }),
+};
+
+export const files: FilesApi = {
+  query: (query) => invoke<string>("files_query", { query }),
+  change: (change) => invoke<string>("files_change", { change }),
+};
+
+export const accounts: AccountsApi & {
+  status(provider: OAuthProvider): Promise<{ configured: boolean; connected: boolean }>;
+  connect(provider: OAuthProvider): Promise<undefined>;
+  disconnect(provider: OAuthProvider): Promise<undefined>;
+} = {
+  accessToken: (provider) => invoke<string>("oauth_access_token", { provider }),
+  status: (provider) => invoke("oauth_status", { provider }),
+  connect: (provider) => invoke<undefined>("oauth_connect", { provider }),
+  disconnect: (provider) => invoke<undefined>("oauth_disconnect", { provider }),
+};
+
+export const messaging = {
+  telegram: async (text: string) => {
+    await invoke("telegram_send", { text });
+  },
 };
 
 export const secrets = {
-  get: (name: SecretName) => invoke<string | null>("secret_get", { name }),
+  get: (name: ReadableSecret) => invoke<string | null>("secret_get", { name }),
+  exists: (name: SecretName) => invoke<boolean>("secret_exists", { name }),
   set: (name: SecretName, value: string) => invoke<undefined>("secret_set", { name, value }),
   delete: (name: SecretName) => invoke<undefined>("secret_delete", { name }),
 };
@@ -81,6 +123,8 @@ export const reminders: ReminderApi = {
 };
 
 export const events = {
+  telegramMessage: (handler: (text: string) => void): Promise<UnlistenFn> =>
+    listen<string>("telegram:message", (event) => handler(event.payload)),
   ruleDue: (handler: (due: { id: string; nextRunAtMs: number }) => void): Promise<UnlistenFn> =>
     listen<{ id: string; nextRunAtMs: number }>("rule:due", (event) => handler(event.payload)),
   reminderDue: (handler: (reminder: Reminder) => void): Promise<UnlistenFn> =>

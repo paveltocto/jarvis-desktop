@@ -22,6 +22,8 @@ pub mod events {
     pub const VOICE_SHORTCUT: &str = "shortcut:voice";
     pub const TOGGLE_MUTE: &str = "tray:toggle-mute";
     pub const SHELL_ERROR: &str = "shell:error";
+    /// Payload: the text of a message from the user's Telegram chat.
+    pub const TELEGRAM_MESSAGE: &str = "telegram:message";
 }
 
 const MAIN_WINDOW: &str = "main";

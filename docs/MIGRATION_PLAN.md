@@ -127,17 +127,17 @@ Out of scope for v1: reading system notifications (macOS has no public API for i
 
 ## 6. Phases
 
-| Phase                             | Scope                                                                                                                                                                                                                | Estimate    | Status                                |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
-| **0. Setup**                      | Repository, Tauri v2 + Vite + TypeScript, platform layer with Windows reporting Unsupported, tool registry, CI for macOS + Windows, legacy tool inventory                                                            | 2–3 days    | **Done**                              |
-| **1. Proof of concept**           | Transparent orb window, tray, global shortcut, microphone in Rust → Gemini Live → playback, "Hey JARVIS", permissions onboarding, `open_app`, `weather_report`. **Measure RAM, CPU and voice latency on a real Mac** | 3–5 days    | **Code done**: awaiting test on a Mac |
-| **2. Core**                       | Memory, protocols, profile, goals, reminders, scheduler, real rules engine, settings, voices, widgets, import of legacy `config/api_keys.json` into the Keychain                                                     | 1–1.5 weeks | **In progress**: see section 10       |
-| **3. Platform-independent tools** | Weather, YouTube, Spotify, web search, files and organizer, documents, Telegram, OpenRouter/DeepSeek, browser (`chromiumoxide`), Gmail, Calendar, morning brief                                                      | 1 week      |                                       |
-| **4. macOS integration**          | Everything in section 5                                                                                                                                                                                              | 1.5 weeks   |                                       |
-| **5. Vision and gestures**        | `screen_vision`, `vision_guardian`, `visual_click` (OCR), camera, MediaPipe gestures                                                                                                                                 | 1 week      |                                       |
-| **6. Safe self-programming**      | `auto_programmer`, `tool_creator`, `self_edit` generate JavaScript that runs in `rquickjs`, with a restricted capability API and user confirmation                                                                   | 1 week      |                                       |
-| **7. macOS distribution**         | Universal `.dmg`, code signing and notarization (Apple Developer account), Info.plist, auto-updates                                                                                                                  | 2–3 days    |                                       |
-| **8. Windows**                    | `platform/windows.rs` (PowerShell, UI Automation, `enigo`), MSI/NSIS installer, Insert as default shortcut, UI testing on WebView2                                                                                   | 1.5–2 weeks |                                       |
+| Phase                             | Scope                                                                                                                                                                                                                | Estimate    | Status                                          |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------- |
+| **0. Setup**                      | Repository, Tauri v2 + Vite + TypeScript, platform layer with Windows reporting Unsupported, tool registry, CI for macOS + Windows, legacy tool inventory                                                            | 2–3 days    | **Done**                                        |
+| **1. Proof of concept**           | Transparent orb window, tray, global shortcut, microphone in Rust → Gemini Live → playback, "Hey JARVIS", permissions onboarding, `open_app`, `weather_report`. **Measure RAM, CPU and voice latency on a real Mac** | 3–5 days    | **Code done**: awaiting test on a Mac           |
+| **2. Core**                       | Memory, protocols, profile, goals, reminders, scheduler, real rules engine, settings, voices, widgets, import of legacy `config/api_keys.json` into the Keychain                                                     | 1–1.5 weeks | **In progress**: see section 10                 |
+| **3. Platform-independent tools** | Weather, YouTube, Spotify, web search, files and organizer, documents, Telegram, OpenRouter/DeepSeek, browser (`chromiumoxide`), Gmail, Calendar, morning brief                                                      | 1 week      | **Code done**: awaiting test with real accounts |
+| **4. macOS integration**          | Everything in section 5                                                                                                                                                                                              | 1.5 weeks   |                                                 |
+| **5. Vision and gestures**        | `screen_vision`, `vision_guardian`, `visual_click` (OCR), camera, MediaPipe gestures                                                                                                                                 | 1 week      |                                                 |
+| **6. Safe self-programming**      | `auto_programmer`, `tool_creator`, `self_edit` generate JavaScript that runs in `rquickjs`, with a restricted capability API and user confirmation                                                                   | 1 week      |                                                 |
+| **7. macOS distribution**         | Universal `.dmg`, code signing and notarization (Apple Developer account), Info.plist, auto-updates                                                                                                                  | 2–3 days    |                                                 |
+| **8. Windows**                    | `platform/windows.rs` (PowerShell, UI Automation, `enigo`), MSI/NSIS installer, Insert as default shortcut, UI testing on WebView2                                                                                   | 1.5–2 weeks |                                                 |
 
 **macOS total: about 7–9 weeks. Windows: 1.5–2 more weeks.**
 
@@ -213,3 +213,25 @@ Still open in phase 2: `agent_task` (priority task queue) and `show_hologram` (H
 Known issues:
 
 - `cargo clippy --all-targets -- -D warnings` fails on Rust 1.100 with `chunks_exact_to_as_chunks` in `audio/wake_word.rs` and `result_unit_err` on `audio_stop`. These predate phase 2 and are not fixed in this change.
+
+## 11. Phase 3 notes
+
+All the phase 3 tools are implemented. Weather was already ported in phase 1. Phase 2 still has `agent_task` and `show_hologram` open.
+
+How the sensitive parts work:
+
+- **Files** (`files.rs`): the backend accepts only paths inside Desktop, Documents and Downloads, without `..`, hidden names or symbolic links. A change is planned, shown in a native dialog opened by Rust, and applied only if allowed. Move, copy and rename never replace a file. `open` refuses programs, scripts, installers and link files.
+- **Sending and account changes** (email, Telegram, Discord, calendar): the tool queues a question in the window (`src/approvals/queue.ts`) and tells the model that nothing has happened yet. The model does not learn the answer.
+- **Credentials**: refresh tokens, the Telegram token and chat id and the OAuth client values cannot be read by the webview (`secrets.rs`). OAuth uses PKCE with a loopback redirect (`services/oauth.rs`); the user brings their own Google and Spotify OAuth clients.
+- **Telegram remote control** is off by default. Only recent messages from the configured private chat are accepted, and only the tools in `REMOTE_TOOLS` can run.
+- **Voice**: the session now closes if a tool takes more than 100 seconds, so an unanswered dialog does not leave the microphone streaming. The change still happens if the user allows it later, but the model does not hear the result.
+- **CSP**: `connect-src` gained OpenRouter, DeepSeek, Discord, Gmail, Google APIs and Spotify.
+
+Verified on a Mac with automated tests: a real YouTube search and a real headless Chrome session (`cargo test live_ -- --ignored`). Word, Excel and PowerPoint files were generated in headless Chrome under the app's CSP, without violations. Everything that needs an account or the app window is listed in [TESTING_ON_MAC.md](TESTING_ON_MAC.md).
+
+Known limitations:
+
+- **Prompt injection**: email, web pages, files and search results reach the model. It is told to treat them as information, and sending or changing anything needs confirmation. Reading does not, and some tools send data out without asking (`openrouter_agent`, web addresses opened by `browser_control` or `youtube_video`). Text that tricks the model could use those to leak something it has read.
+- The wake-word, voice and `googleSearch` combination has not been checked against the live API.
+- `system_monitor` does not report the battery. Moving files to the Trash is implemented on macOS only.
+- The Rust build on Windows has not been checked with the new dependencies; CI will show it.

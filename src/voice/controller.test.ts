@@ -5,6 +5,7 @@ import {
   type LiveSession,
   type SessionHandlers,
   SPEECH_LEVEL,
+  TOOL_WAIT_LIMIT_MS,
   VoiceController,
   type VoiceState,
 } from "./controller";
@@ -221,6 +222,17 @@ describe("VoiceController", () => {
       { id: "1", name: "open_app", response: { output: "Opened Safari." } },
       { id: "2", name: "missing", response: { error: "nope", code: "unknown_tool" } },
     ]);
+  });
+
+  it("does not keep the microphone open for a tool that waits too long", async () => {
+    const t = setup();
+    await t.controller.start();
+    await t.controller.wakeWordDetected();
+    t.executeTool.mockReturnValue(new Promise(() => undefined));
+    t.session().handlers.onToolCalls([{ id: "1", name: "file_controller", args: {} }]);
+    await vi.advanceTimersByTimeAsync(TOOL_WAIT_LIMIT_MS);
+    expect(t.session().closed).toBe(true);
+    expect(t.controller.snapshot.state).toBe("idle");
   });
 
   it("push-to-talk streams only while the key is held", async () => {
