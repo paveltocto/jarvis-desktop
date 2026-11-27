@@ -48,6 +48,15 @@ body {
   cursor: grab;
 }
 
+/* Leave room for the native traffic lights, which also replace the hide button. */
+.platform-macos .titlebar {
+  padding-left: 78px;
+}
+
+.platform-macos #hide-window {
+  display: none;
+}
+
 .brand {
   color: var(--amber);
   font-weight: 700;

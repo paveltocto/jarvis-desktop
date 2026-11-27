@@ -29,6 +29,14 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(audio::AudioService::new())
         .manage(shell::VoiceShortcut::default())
+        // Closing the window only hides it: JARVIS keeps listening until the
+        // user quits from the tray.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             let data_dir = data::DataDir(app.path().app_data_dir()?);
             let reminders = Arc::new(reminders::Reminders::load(data_dir.clone())?);
@@ -61,6 +69,11 @@ pub fn run() {
             commands::legacy_import_keys,
             commands::legacy_read_document,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running the JARVIS application");
+        .build(tauri::generate_context!())
+        .expect("error while building the JARVIS application")
+        .run(|app, event| {
+            if platform::is_dock_reopen(&event) {
+                shell::show_main_window(app);
+            }
+        });
 }

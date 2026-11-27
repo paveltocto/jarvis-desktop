@@ -168,6 +168,7 @@ class App {
     this.#renderWidgets();
     void this.#reconcileRules();
     this.#platform = await getPlatformInfo();
+    document.body.classList.toggle("platform-macos", this.#platform.os === "macos");
     this.#fillShortcutOptions();
     await this.#applyStoredShortcut();
 
