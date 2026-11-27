@@ -61,7 +61,7 @@ pub async fn audio_start(
 }
 
 #[tauri::command]
-pub async fn audio_stop(audio: State<'_, AudioService>) -> Result<(), ()> {
+pub async fn audio_stop(audio: State<'_, AudioService>) -> Result<(), AudioError> {
     audio.stop();
     Ok(())
 }
