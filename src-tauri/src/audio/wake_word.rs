@@ -105,7 +105,7 @@ impl WakeWordDetector {
                 ((seed >> 16) % 2000) as i16 - 1000
             })
             .collect();
-        for chunk in noise.chunks_exact(CHUNK_SAMPLES) {
+        for chunk in noise.as_chunks::<CHUNK_SAMPLES>().0 {
             self.process_chunk(chunk)?;
         }
         self.reset_audio_buffers();
@@ -125,7 +125,7 @@ impl WakeWordDetector {
         let complete = self.pending.len() / CHUNK_SAMPLES * CHUNK_SAMPLES;
         let chunks: Vec<i16> = self.pending.drain(..complete).collect();
         let mut scores = Vec::with_capacity(chunks.len() / CHUNK_SAMPLES);
-        for chunk in chunks.chunks_exact(CHUNK_SAMPLES) {
+        for chunk in chunks.as_chunks::<CHUNK_SAMPLES>().0 {
             self.process_chunk(chunk)?;
             scores.push(self.score()?);
         }
@@ -142,7 +142,12 @@ impl WakeWordDetector {
         let input = Tensor::from_shape(&[1, input.len()], &input)?;
         let output = self.melspec.run(tvec!(input.into_tvalue()))?;
         let frames = output[0].to_plain_array_view::<f32>()?;
-        for frame in frames.as_slice().unwrap_or_default().chunks_exact(MEL_BINS) {
+        for frame in frames
+            .as_slice()
+            .unwrap_or_default()
+            .as_chunks::<MEL_BINS>()
+            .0
+        {
             let mut row = [0.0; MEL_BINS];
             for (dst, src) in row.iter_mut().zip(frame) {
                 *dst = src / 10.0 + 2.0;
