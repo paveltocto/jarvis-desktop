@@ -1,9 +1,10 @@
 /**
- * User settings for phase 1, stored in localStorage. Moves to the Rust
- * settings store in phase 2.
+ * Settings: defaults, validation and the shape of the stored document.
+ * Persistence lives in `src/settings/settings-store.ts`.
  */
 
 import type { Os } from "./platform";
+import { parseWidgetList, type WidgetId } from "./widgets/catalog";
 
 export type ActivationMode = "wake_word" | "push_to_talk" | "always_on";
 
@@ -18,6 +19,10 @@ export interface Settings {
   inactivityTimeoutMs: number;
   /** Global push-to-talk / wake shortcut, one of `VOICE_SHORTCUTS`. */
   voiceShortcut: string;
+  /** Widgets shown in the main window, in catalog order. */
+  visibleWidgets: WidgetId[];
+  /** City for the weather widget. Empty means not set. */
+  weatherCity: string;
 }
 
 /**
@@ -66,9 +71,12 @@ export const DEFAULT_SETTINGS: Settings = {
   liveModel: DEFAULT_LIVE_MODEL,
   inactivityTimeoutMs: 12_000,
   voiceShortcut: DEFAULT_VOICE_SHORTCUT,
+  visibleWidgets: ["clock"],
+  weatherCity: "",
 };
 
-const STORAGE_KEY = "jarvis.settings.v1";
+/** localStorage key used before settings moved to the document store. */
+export const LEGACY_STORAGE_KEY = "jarvis.settings.v1";
 const MODES: readonly ActivationMode[] = ["wake_word", "push_to_talk", "always_on"];
 
 /** Merges stored values over the defaults, dropping anything invalid. */
@@ -91,25 +99,14 @@ export function parseSettings(raw: unknown): Settings {
   if (typeof value.inactivityTimeoutMs === "number" && value.inactivityTimeoutMs >= 3_000) {
     settings.inactivityTimeoutMs = Math.min(120_000, value.inactivityTimeoutMs);
   }
+  if (Array.isArray(value.visibleWidgets)) {
+    settings.visibleWidgets = parseWidgetList(value.visibleWidgets);
+  }
+  if (typeof value.weatherCity === "string") {
+    settings.weatherCity = value.weatherCity.trim().slice(0, 80);
+  }
   if (VOICE_SHORTCUTS.some((item) => item.accelerator === value.voiceShortcut)) {
     settings.voiceShortcut = value.voiceShortcut as string;
   }
   return settings;
-}
-
-export function loadSettings(): Settings {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return parseSettings(stored ? JSON.parse(stored) : null);
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-}
-
-export function saveSettings(settings: Settings): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage can be unavailable; settings then last for this run only.
-  }
 }

@@ -6,7 +6,10 @@
 //! main thread.
 
 use crate::audio::{AudioError, AudioEvents, AudioService, InputDeviceInfo};
+use crate::data::{self, DataDir, DataError};
+use crate::legacy_import;
 use crate::platform::{self, PlatformError, PlatformInfo, PrivacyPane};
+use crate::reminders::{self, Reminder, ReminderError, Reminders};
 use crate::secrets::{self, SecretError};
 use crate::shell::{self, ShortcutError, events};
 use std::sync::Arc;
@@ -93,6 +96,75 @@ pub async fn secret_set(name: String, value: String) -> Result<(), SecretError> 
 #[tauri::command]
 pub async fn secret_delete(name: String) -> Result<(), SecretError> {
     secrets::delete(&name)
+}
+
+/// Reads a JSON document (memory, profile, goals, protocols). `null` when
+/// the document has not been written yet.
+#[tauri::command]
+pub async fn data_read(
+    dir: State<'_, DataDir>,
+    name: String,
+) -> Result<Option<serde_json::Value>, DataError> {
+    data::read(&dir.0, &name)
+}
+
+#[tauri::command]
+pub async fn data_write(
+    dir: State<'_, DataDir>,
+    name: String,
+    value: serde_json::Value,
+) -> Result<(), DataError> {
+    data::write(&dir.0, &name, &value)
+}
+
+#[tauri::command]
+pub async fn reminder_add(
+    reminders: State<'_, Arc<Reminders>>,
+    message: String,
+    due_at_ms: i64,
+) -> Result<Reminder, ReminderError> {
+    reminders.add(&message, due_at_ms, reminders::now_ms())
+}
+
+#[tauri::command]
+pub async fn reminder_list(
+    reminders: State<'_, Arc<Reminders>>,
+) -> Result<Vec<Reminder>, ReminderError> {
+    reminders.list()
+}
+
+#[tauri::command]
+pub async fn reminder_cancel(
+    reminders: State<'_, Arc<Reminders>>,
+    id: String,
+) -> Result<bool, ReminderError> {
+    reminders.cancel(&id)
+}
+
+/// Quits the app. The frontend only calls this after the user confirmed in the window.
+#[tauri::command]
+pub fn app_quit(app: AppHandle) {
+    app.exit(0);
+}
+
+/// Asks the user to pick the legacy api_keys.json and stores its keys.
+/// `None` when the user cancels. Returns key names only, never values.
+/// Async so it runs off the main thread: the picker blocks until the user
+/// answers, and blocking the main thread would freeze the picker itself.
+#[tauri::command]
+pub async fn legacy_import_keys(
+    app: AppHandle,
+) -> Result<Option<legacy_import::ImportReport>, legacy_import::ImportError> {
+    legacy_import::pick_and_import_keys(&app)
+}
+
+/// Asks the user to pick a legacy JSON file (memory or protocols) and returns its content.
+/// `None` when the user cancels. Async for the same reason as `legacy_import_keys`.
+#[tauri::command]
+pub async fn legacy_read_document(
+    app: AppHandle,
+) -> Result<Option<serde_json::Value>, legacy_import::ImportError> {
+    legacy_import::pick_and_read_json(&app)
 }
 
 /// Replaces the global voice shortcut. Synchronous so it runs on the main

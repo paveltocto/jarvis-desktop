@@ -43,8 +43,12 @@
         <p id="hint" class="hint"></p>
         <div id="notice" class="notice" hidden>
           <p id="notice-text"></p>
-          <button id="notice-action" class="text-button" type="button" hidden></button>
+          <div class="notice-actions">
+            <button id="notice-action" class="text-button" type="button" hidden></button>
+            <button id="notice-cancel" class="text-button" type="button" hidden>Cancel</button>
+          </div>
         </div>
+        <div id="widgets" class="widgets" aria-label="Widgets" hidden></div>
         <footer class="controls">
           <button
             id="mute"
@@ -110,14 +114,50 @@
             Live model
             <input id="model" type="text" spellcheck="false" />
           </label>
+          <label>
+            Weather city
+            <input id="weather-city" type="text" maxlength="80" placeholder="e.g. Lima" />
+          </label>
+          <fieldset class="widget-choices">
+            <legend>Widgets shown</legend>
+            <label><input name="widget" type="checkbox" value="clock" /> Clock</label>
+            <label><input name="widget" type="checkbox" value="weather" /> Weather</label>
+            <label><input name="widget" type="checkbox" value="reminders" /> Reminders</label>
+            <label><input name="widget" type="checkbox" value="goals" /> Goals</label>
+          </fieldset>
           <p id="settings-error" class="error" hidden></p>
+          <p id="settings-status" class="muted" role="status" hidden></p>
           <div class="settings-actions">
+            <button id="import-legacy" class="text-button" type="button">
+              Import api_keys.json…
+            </button>
+            <button id="import-legacy-memory" class="text-button" type="button">
+              Import memory…
+            </button>
+            <button id="import-legacy-protocols" class="text-button" type="button">
+              Import protocols…
+            </button>
             <button id="remove-key" class="text-button danger" type="button">Remove key</button>
             <span class="spacer"></span>
             <button id="close-settings" class="text-button" type="button">Cancel</button>
             <button class="primary-button" type="submit">Save</button>
           </div>
         </form>
+        <section class="protocols" aria-labelledby="protocols-title">
+          <h3 id="protocols-title">Protocols</h3>
+          <ul id="protocol-list" class="protocol-list"></ul>
+          <p id="protocol-empty" class="muted small" hidden>
+            No protocols yet. Ask JARVIS to save one, or import them from the legacy app.
+          </p>
+        </section>
+        <section class="rules" aria-labelledby="rules-title">
+          <h3 id="rules-title">Rules</h3>
+          <ul id="rule-list" class="protocol-list"></ul>
+          <p id="rule-empty" class="muted small" hidden>
+            No rules yet. Ask JARVIS to create one, for example "when I say good morning, open
+            Spotify".
+          </p>
+        </section>
       </section>
     </main>
   </body>

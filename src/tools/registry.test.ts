@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ToolRegistry } from "./registry";
 import type { ToolContext, ToolDefinition } from "./types";
+import { testContext } from "./testing/context";
 import { ok } from "./types";
 
-const ctx = (overrides: Partial<ToolContext> = {}): ToolContext => ({
-  os: "macos",
-  capabilities: [],
-  now: () => new Date("2026-01-01T12:00:00Z"),
-  fetch: () => Promise.reject(new Error("no network in tests")),
-  system: { openApp: () => Promise.resolve() },
-  ...overrides,
-});
+const ctx = (overrides: Partial<ToolContext> = {}): ToolContext => testContext(overrides);
 
 const tool = (overrides: Partial<ToolDefinition> = {}): ToolDefinition => ({
   name: "sample_tool",

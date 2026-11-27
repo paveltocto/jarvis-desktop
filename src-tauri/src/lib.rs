@@ -6,9 +6,16 @@
 
 pub mod audio;
 pub mod commands;
+pub mod data;
+pub mod legacy_import;
 pub mod platform;
+pub mod reminders;
+pub mod rules;
 pub mod secrets;
 pub mod shell;
+
+use std::sync::Arc;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,10 +25,16 @@ pub fn run() {
             shell::show_main_window(app);
         }))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(audio::AudioService::new())
         .manage(shell::VoiceShortcut::default())
         .setup(|app| {
+            let data_dir = data::DataDir(app.path().app_data_dir()?);
+            let reminders = Arc::new(reminders::Reminders::load(data_dir.clone())?);
+            app.manage(data_dir.clone());
+            app.manage(Arc::clone(&reminders));
+            reminders::spawn_scheduler(app.handle().clone(), reminders, data_dir);
             shell::setup_tray(app)?;
             shell::register_voice_shortcut(app.handle());
             Ok(())
@@ -39,6 +52,14 @@ pub fn run() {
             commands::secret_set,
             commands::secret_delete,
             commands::voice_shortcut_set,
+            commands::data_read,
+            commands::data_write,
+            commands::reminder_add,
+            commands::reminder_list,
+            commands::reminder_cancel,
+            commands::app_quit,
+            commands::legacy_import_keys,
+            commands::legacy_read_document,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the JARVIS application");

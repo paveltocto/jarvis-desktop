@@ -136,6 +136,11 @@ body {
   margin: 0;
 }
 
+.notice-actions {
+  display: flex;
+  gap: 16px;
+}
+
 .notice .text-button {
   margin-top: 6px;
   padding-left: 0;
@@ -297,4 +302,48 @@ select:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--amber);
   outline-offset: 2px;
+}
+
+.widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.widgets[hidden] {
+  display: none;
+}
+
+.widget {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.widget h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.widget p {
+  margin: 2px 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.widget .clock-time {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.widget .error {
+  color: #ff8a9e;
 }

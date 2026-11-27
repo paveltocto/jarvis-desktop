@@ -1,16 +1,57 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { audioBackend, errorMessage, events, secrets, shell, system } from "./backend";
+import {
+  app,
+  audioBackend,
+  documents,
+  errorMessage,
+  events,
+  legacy,
+  reminders,
+  secrets,
+  shell,
+  system,
+} from "./backend";
 import {
   type ActivationMode,
+  DEFAULT_SETTINGS,
   DEFAULT_VOICE_SHORTCUT,
-  loadSettings,
   type Settings,
-  saveSettings,
   shortcutLabel,
   VOICE_SHORTCUTS,
   VOICES,
 } from "./config";
+import { createDocumentStore } from "./data/document-store";
+import { weatherReport } from "./tools/builtin/weather-report";
+import { InvalidInput } from "./data/records";
+import {
+  describeTrigger,
+  MAX_RULES,
+  nextRunAt,
+  PhraseMatcher,
+  type Rule,
+  type RulesDocument,
+} from "./rules/model";
+import { RULE_GRACE_MS, runRuleAction } from "./rules/runner";
+import { WIDGET_IDS, type WidgetId } from "./widgets/catalog";
+import { WidgetPanel } from "./widgets/panel";
+import { loadSettings, saveSettings } from "./settings/settings-store";
+import {
+  formatGoalsForPrompt,
+  importLegacyMemory,
+  importLegacyProtocols,
+  type LegacyMemoryImport,
+  type LegacyProtocolsImport,
+  protocolNames,
+  removeProtocol,
+  formatMemoryForPrompt,
+  formatProfileForPrompt,
+  formatProtocolNamesForPrompt,
+  type GoalsDocument,
+  type MemoryDocument,
+  type ProfileDocument,
+  type ProtocolsDocument,
+} from "./data/records";
 import { Orb } from "./orb/orb";
 import { getPlatformInfo, type PlatformInfo } from "./platform";
 import { createToolRegistry } from "./tools";
@@ -34,6 +75,7 @@ const ui = {
   notice: element<HTMLDivElement>("notice"),
   noticeText: element<HTMLParagraphElement>("notice-text"),
   noticeAction: element<HTMLButtonElement>("notice-action"),
+  noticeCancel: element<HTMLButtonElement>("notice-cancel"),
   mute: element<HTMLButtonElement>("mute"),
   mode: element<HTMLSelectElement>("mode"),
   voiceView: element<HTMLElement>("voice-view"),
@@ -46,7 +88,18 @@ const ui = {
   voice: element<HTMLSelectElement>("voice"),
   voiceShortcut: element<HTMLSelectElement>("voice-shortcut"),
   model: element<HTMLInputElement>("model"),
+  weatherCity: element<HTMLInputElement>("weather-city"),
+  widgets: element<HTMLDivElement>("widgets"),
+  widgetChecks: [...document.querySelectorAll<HTMLInputElement>('input[name="widget"]')],
   removeKey: element<HTMLButtonElement>("remove-key"),
+  importLegacy: element<HTMLButtonElement>("import-legacy"),
+  importLegacyMemory: element<HTMLButtonElement>("import-legacy-memory"),
+  importLegacyProtocols: element<HTMLButtonElement>("import-legacy-protocols"),
+  protocolList: element<HTMLUListElement>("protocol-list"),
+  protocolEmpty: element<HTMLParagraphElement>("protocol-empty"),
+  ruleList: element<HTMLUListElement>("rule-list"),
+  ruleEmpty: element<HTMLParagraphElement>("rule-empty"),
+  settingsStatus: element<HTMLParagraphElement>("settings-status"),
   closeSettings: element<HTMLButtonElement>("close-settings"),
 };
 
@@ -74,12 +127,15 @@ interface NoticeAction {
   run: () => void;
 }
 
-function showNotice(message: string, action?: NoticeAction): void {
+function showNotice(message: string, action?: NoticeAction, cancel?: NoticeAction): void {
   ui.noticeText.textContent = message;
   ui.notice.hidden = false;
   ui.noticeAction.hidden = !action;
   ui.noticeAction.textContent = action?.label ?? "";
   ui.noticeAction.onclick = action ? () => action.run() : null;
+  ui.noticeCancel.hidden = !cancel;
+  ui.noticeCancel.textContent = cancel?.label ?? "";
+  ui.noticeCancel.onclick = cancel ? () => cancel.run() : null;
 }
 
 function hideNotice(): void {
@@ -89,8 +145,11 @@ function hideNotice(): void {
 class App {
   readonly #orb = new Orb(ui.orbCanvas);
   readonly #registry = createToolRegistry();
+  readonly #store = createDocumentStore(documents);
+  #widgetPanel: WidgetPanel | null = null;
+  readonly #phrases = new PhraseMatcher();
   readonly #speaker = new PcmSpeaker(() => this.#controller?.playbackFinished());
-  #settings: Settings = loadSettings();
+  #settings: Settings = DEFAULT_SETTINGS;
   #platform: PlatformInfo = { os: "other", arch: "unknown", capabilities: [] };
   #controller: VoiceController | null = null;
   #apiKey: string | null = null;
@@ -100,6 +159,14 @@ class App {
     this.#orb.start();
     this.#bindUi();
     await this.#bindBackendEvents();
+    await this.#loadSettings();
+    this.#widgetPanel = new WidgetPanel(ui.widgets, {
+      store: this.#store,
+      reminders,
+      weather: (city) => this.#weatherText(city),
+    });
+    this.#renderWidgets();
+    void this.#reconcileRules();
     this.#platform = await getPlatformInfo();
     this.#fillShortcutOptions();
     await this.#applyStoredShortcut();
@@ -117,6 +184,182 @@ class App {
       return;
     }
     await this.#startVoice();
+  }
+
+  async #loadSettings(): Promise<void> {
+    try {
+      this.#settings = await loadSettings(this.#store, localStorage);
+    } catch (error) {
+      showNotice(`Settings could not be read; using defaults: ${errorMessage(error)}`);
+    }
+  }
+
+  /* ------------------------------------------------------------ rules */
+
+  async #readRules(): Promise<Rule[]> {
+    return (await this.#store.read<RulesDocument>("rules")) ?? [];
+  }
+
+  /** Phrase rules: runs the rules whose phrase the user just said. */
+  async #onSpeech(text: string): Promise<void> {
+    try {
+      for (const rule of this.#phrases.feed(text, await this.#readRules())) {
+        void this.#runRule(rule);
+      }
+    } catch (error) {
+      showNotice(`Could not check phrase rules: ${errorMessage(error)}`);
+    }
+  }
+
+  /** Scheduled rules: the Rust scheduler reports a due time; this runs the action and sets the next time. */
+  async #onRuleDue(id: string, scheduledMs: number): Promise<void> {
+    try {
+      const rule = (await this.#readRules()).find((item) => item.id === id);
+      if (!rule || !rule.enabled || rule.nextRunAtMs !== scheduledMs) return;
+      const now = new Date();
+      await this.#store.update<RulesDocument>("rules", (current) =>
+        (current ?? []).map((item) =>
+          item.id === id && item.nextRunAtMs === scheduledMs
+            ? { ...item, nextRunAtMs: nextRunAt(item.trigger, now) }
+            : item,
+        ),
+      );
+      if (now.getTime() - scheduledMs > RULE_GRACE_MS) {
+        showNotice(`Rule "${rule.name}" was skipped: it was due while JARVIS was not running.`, {
+          label: "Dismiss",
+          run: () => hideNotice(),
+        });
+        return;
+      }
+      await this.#runRule(rule);
+    } catch (error) {
+      showNotice(`A scheduled rule could not run: ${errorMessage(error)}`);
+    }
+  }
+
+  async #runRule(rule: Rule): Promise<void> {
+    const result = await runRuleAction(rule, (name, args) =>
+      this.#registry.execute(name, args, this.#toolContext()),
+    );
+    showNotice(`Rule "${rule.name}": ${result.ok ? result.output : result.error}`, {
+      label: "Dismiss",
+      run: () => hideNotice(),
+    });
+  }
+
+  /** After a restart, rules that were due while JARVIS was closed get their next time, without running. */
+  async #reconcileRules(): Promise<void> {
+    try {
+      const now = new Date();
+      const isStale = (rule: Rule) =>
+        rule.enabled &&
+        rule.nextRunAtMs !== null &&
+        rule.nextRunAtMs < now.getTime() - RULE_GRACE_MS;
+      if (!(await this.#readRules()).some(isStale)) return;
+      await this.#store.update<RulesDocument>("rules", (current) =>
+        (current ?? []).map((rule) =>
+          isStale(rule) ? { ...rule, nextRunAtMs: nextRunAt(rule.trigger, now) } : rule,
+        ),
+      );
+    } catch (error) {
+      showNotice(`Rules could not be read: ${errorMessage(error)}`);
+    }
+  }
+
+  /** Asks the user before a rule created by the model becomes active. */
+  #confirmRule(rule: Rule): void {
+    showNotice(
+      `Create rule "${rule.name}": ${describeTrigger(rule.trigger)}, then run ${rule.toolName}?`,
+      { label: "Create rule", run: () => void this.#saveRule(rule) },
+      { label: "Cancel", run: () => hideNotice() },
+    );
+  }
+
+  async #saveRule(rule: Rule): Promise<void> {
+    try {
+      await this.#store.update<RulesDocument>("rules", (current) => {
+        const list = current ?? [];
+        if (list.length >= MAX_RULES) {
+          throw new InvalidInput(`There are already ${MAX_RULES} rules. Delete some first.`);
+        }
+        return [...list, rule];
+      });
+      showNotice(`Rule "${rule.name}" created.`, { label: "Dismiss", run: () => hideNotice() });
+      await this.#renderRules();
+    } catch (error) {
+      showNotice(`Rule not created: ${errorMessage(error)}`);
+    }
+  }
+
+  /** Shows the rules in Settings, with an on/off switch and a remove button. */
+  async #renderRules(): Promise<void> {
+    const rules = await this.#readRules();
+    ui.ruleList.replaceChildren(
+      ...rules.map((rule) => {
+        const item = document.createElement("li");
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        toggle.checked = rule.enabled;
+        toggle.setAttribute("aria-label", `Enable rule ${rule.name}`);
+        toggle.addEventListener("change", () => void this.#setRuleEnabled(rule.id, toggle.checked));
+        const label = document.createElement("span");
+        label.textContent = `${rule.name}: ${describeTrigger(rule.trigger)} → ${rule.toolName}`;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "text-button danger";
+        remove.textContent = "Remove";
+        remove.setAttribute("aria-label", `Remove rule ${rule.name}`);
+        remove.addEventListener("click", () => void this.#removeRule(rule.id));
+        item.append(toggle, label, remove);
+        return item;
+      }),
+    );
+    ui.ruleEmpty.hidden = rules.length > 0;
+  }
+
+  async #setRuleEnabled(id: string, enabled: boolean): Promise<void> {
+    await this.#store.update<RulesDocument>("rules", (current) =>
+      (current ?? []).map((rule) => (rule.id === id ? { ...rule, enabled } : rule)),
+    );
+    await this.#renderRules();
+  }
+
+  async #removeRule(id: string): Promise<void> {
+    await this.#store.update<RulesDocument>("rules", (current) =>
+      (current ?? []).filter((rule) => rule.id !== id),
+    );
+    await this.#renderRules();
+  }
+
+  #renderWidgets(): void {
+    this.#widgetPanel?.render(this.#settings.visibleWidgets, this.#settings.weatherCity);
+  }
+
+  /** Shows or hides one widget from a tool call or from Settings. */
+  #setWidgetVisible(id: WidgetId, visible: boolean): void {
+    const shown = new Set<WidgetId>(this.#settings.visibleWidgets);
+    if (visible) shown.add(id);
+    else shown.delete(id);
+    this.#settings = {
+      ...this.#settings,
+      visibleWidgets: WIDGET_IDS.filter((item) => shown.has(item)),
+    };
+    this.#persistSettings();
+    this.#renderWidgets();
+  }
+
+  async #weatherText(city: string): Promise<string> {
+    if (!city) throw new Error("Set a city in Settings first.");
+    const result = await weatherReport.execute({ city }, this.#toolContext());
+    if (!result.ok) throw new Error(result.error);
+    return result.output;
+  }
+
+  /** Saves in the background; a failure is shown instead of being lost. */
+  #persistSettings(): void {
+    saveSettings(this.#store, this.#settings).catch((error: unknown) =>
+      showNotice(`Settings could not be saved: ${errorMessage(error)}`),
+    );
   }
 
   #fillShortcutOptions(): void {
@@ -137,7 +380,7 @@ class App {
         `${errorMessage(error)}. Using ${shortcutLabel(DEFAULT_VOICE_SHORTCUT, this.#platform.os)} instead.`,
       );
       this.#settings = { ...this.#settings, voiceShortcut: DEFAULT_VOICE_SHORTCUT };
-      saveSettings(this.#settings);
+      this.#persistSettings();
     }
   }
 
@@ -148,7 +391,52 @@ class App {
       now: () => new Date(),
       fetch: (input, init) => window.fetch(input, init),
       system: { openApp: (name) => system.openApp(name) },
+      store: this.#store,
+      reminders,
+      app: { requestQuit: async () => this.#confirmQuit() },
+      widgets: {
+        list: () =>
+          WIDGET_IDS.map((id) => ({ id, visible: this.#settings.visibleWidgets.includes(id) })),
+        setVisible: async (id, visible) => this.#setWidgetVisible(id as WidgetId, visible),
+      },
+      rules: { requestCreate: async (rule) => this.#confirmRule(rule) },
+      knownTools: this.#registry
+        .available({ os: this.#platform.os, capabilities: this.#platform.capabilities })
+        .map((tool) => tool.name),
     };
+  }
+
+  /** Asks in the window before quitting. The tool result says the app is still open until the user confirms. */
+  #confirmQuit(): void {
+    showNotice(
+      "Close JARVIS now?",
+      { label: "Quit JARVIS", run: () => void app.quit() },
+      {
+        label: "Cancel",
+        run: () => hideNotice(),
+      },
+    );
+  }
+
+  /** Builds the system instruction, including what the user asked JARVIS to remember. */
+  async #systemInstruction(): Promise<string> {
+    try {
+      const [memory, profile, goals, protocols] = await Promise.all([
+        this.#store.read<MemoryDocument>("memory"),
+        this.#store.read<ProfileDocument>("profile"),
+        this.#store.read<GoalsDocument>("goals"),
+        this.#store.read<ProtocolsDocument>("protocols"),
+      ]);
+      return buildSystemInstruction(new Date(), [
+        formatMemoryForPrompt(memory),
+        formatProfileForPrompt(profile),
+        formatGoalsForPrompt(goals),
+        formatProtocolNamesForPrompt(protocols),
+      ]);
+    } catch (error) {
+      showNotice(`Stored memory could not be read: ${errorMessage(error)}`);
+      return buildSystemInstruction(new Date());
+    }
   }
 
   async #startVoice(): Promise<void> {
@@ -163,8 +451,10 @@ class App {
         apiKey: this.#apiKey,
         model: this.#settings.liveModel,
         voice: this.#settings.voice,
-        systemInstruction: () => buildSystemInstruction(new Date()),
+        systemInstruction: () => this.#systemInstruction(),
         tools: () => toFunctionDeclarations(this.#registry.declarations(this.#platform)),
+        onInputTranscript: (text) => void this.#onSpeech(text),
+        onTurnEnd: () => this.#phrases.reset(),
       }),
       executeTool: (name, args) => this.#registry.execute(name, args, this.#toolContext()),
       mode: this.#settings.activationMode,
@@ -235,7 +525,7 @@ class App {
     ui.mode.addEventListener("change", () => {
       const mode = ui.mode.value as ActivationMode;
       this.#settings = { ...this.#settings, activationMode: mode };
-      saveSettings(this.#settings);
+      this.#persistSettings();
       void this.#controller?.setMode(mode);
     });
     element("open-settings").addEventListener("click", () => this.#openSettings(""));
@@ -246,6 +536,9 @@ class App {
     );
     ui.closeSettings.addEventListener("click", () => this.#closeSettings());
     ui.removeKey.addEventListener("click", () => void this.#removeKey());
+    ui.importLegacy.addEventListener("click", () => void this.#importLegacyKeys());
+    ui.importLegacyMemory.addEventListener("click", () => void this.#importLegacyMemory());
+    ui.importLegacyProtocols.addEventListener("click", () => void this.#importLegacyProtocols());
     ui.settingsForm.addEventListener("submit", (event) => {
       event.preventDefault();
       void this.#saveSettings();
@@ -271,6 +564,11 @@ class App {
       ),
       events.toggleMute(() => void this.#toggleMute()),
       events.audioError((message) => showNotice(message)),
+      events.ruleDue((due) => void this.#onRuleDue(due.id, due.nextRunAtMs)),
+      events.reminderDue((item) => {
+        showNotice(`Reminder: ${item.message}`, { label: "Dismiss", run: () => hideNotice() });
+        this.#widgetPanel?.refresh();
+      }),
       events.shellError((message) => showNotice(message)),
     ]);
   }
@@ -286,11 +584,27 @@ class App {
     ui.voice.value = this.#settings.voice;
     ui.voiceShortcut.value = this.#settings.voiceShortcut;
     ui.model.value = this.#settings.liveModel;
+    ui.weatherCity.value = this.#settings.weatherCity;
+    for (const box of ui.widgetChecks)
+      box.checked = this.#settings.visibleWidgets.includes(box.value as WidgetId);
     ui.removeKey.hidden = !this.#apiKey;
     ui.closeSettings.hidden = !this.#apiKey;
     ui.settingsError.hidden = true;
+    ui.settingsStatus.hidden = true;
+    void this.#loadProtocols();
+    void this.#renderRules().catch((error: unknown) =>
+      this.#showSettingsError(`Could not read rules: ${errorMessage(error)}`),
+    );
     ui.voiceView.hidden = true;
     ui.settingsView.hidden = false;
+  }
+
+  async #loadProtocols(): Promise<void> {
+    try {
+      this.#renderProtocols(await this.#store.read<ProtocolsDocument>("protocols"));
+    } catch (error) {
+      this.#showSettingsError(`Could not read protocols: ${errorMessage(error)}`);
+    }
   }
 
   #closeSettings(): void {
@@ -330,9 +644,20 @@ class App {
       voice: ui.voice.value,
       voiceShortcut,
       liveModel: ui.model.value.trim() || previous.liveModel,
+      weatherCity: ui.weatherCity.value.trim().slice(0, 80),
+      visibleWidgets: WIDGET_IDS.filter((id) =>
+        ui.widgetChecks.some((box) => box.value === id && box.checked),
+      ),
     };
-    saveSettings(this.#settings);
+    try {
+      await saveSettings(this.#store, this.#settings);
+    } catch (error) {
+      ui.settingsError.textContent = `Could not save settings: ${errorMessage(error)}`;
+      ui.settingsError.hidden = false;
+      return;
+    }
     this.#closeSettings();
+    this.#renderWidgets();
 
     const sessionChanged =
       Boolean(newKey) ||
@@ -345,6 +670,115 @@ class App {
       await this.#controller.setWakeWordThreshold(this.#settings.wakeWordThreshold);
       // Refresh the idle hint in case the shortcut changed.
       this.#render(this.#controller.snapshot);
+    }
+  }
+
+  /** Asks the backend to pick api_keys.json and stores its real keys in the Keychain. */
+  async #importLegacyKeys(): Promise<void> {
+    ui.settingsError.hidden = true;
+    try {
+      const report = await legacy.importKeys();
+      if (!report) return;
+      if (report.imported.includes("gemini_api_key")) {
+        this.#apiKey = await secrets.get("gemini_api_key");
+        ui.apiKey.placeholder = "Saved in the Keychain (leave empty to keep)";
+        ui.removeKey.hidden = !this.#apiKey;
+        ui.closeSettings.hidden = !this.#apiKey;
+        await this.#startVoice();
+      }
+      const imported = report.imported.length
+        ? `Imported to the Keychain: ${report.imported.join(", ")}.`
+        : "No keys were imported.";
+      const skipped = report.skipped.map((item) => `${item.name} (${item.reason})`);
+      this.#showSettingsStatus(
+        [imported, ...(skipped.length ? [`Skipped: ${skipped.join("; ")}.`] : [])].join(" "),
+      );
+    } catch (error) {
+      this.#showSettingsError(`Import failed: ${errorMessage(error)}`);
+    }
+  }
+
+  /** Merges the legacy memory file into the stored memory. */
+  async #importLegacyMemory(): Promise<void> {
+    await this.#runLegacyImport(async () => {
+      const file = await legacy.readDocument();
+      if (file === null) return null;
+      let done = null as LegacyMemoryImport | null;
+      await this.#store.update<MemoryDocument>("memory", (current) => {
+        done = importLegacyMemory(current, file);
+        return done.document;
+      });
+      if (!done) return null;
+      return `Memory: imported ${done.imported} entries, skipped ${done.skipped}, dropped ${done.dropped} older entries to fit the size limit.`;
+    });
+  }
+
+  /** Merges the legacy protocols file. Existing protocols with the same name are kept. */
+  async #importLegacyProtocols(): Promise<void> {
+    await this.#runLegacyImport(async () => {
+      const file = await legacy.readDocument();
+      if (file === null) return null;
+      let done = null as LegacyProtocolsImport | null;
+      await this.#store.update<ProtocolsDocument>("protocols", (current) => {
+        done = importLegacyProtocols(current, file);
+        return done.document;
+      });
+      if (!done) return null;
+      this.#renderProtocols(done.document);
+      return `Protocols: imported ${done.imported.length}, kept ${done.kept.length} existing (${done.kept.join(", ") || "none"}), skipped ${done.skipped}.`;
+    });
+  }
+
+  /** Runs one import, showing its summary or its error in the settings view. */
+  async #runLegacyImport(run: () => Promise<string | null>): Promise<void> {
+    ui.settingsError.hidden = true;
+    try {
+      const summary = await run();
+      if (summary) this.#showSettingsStatus(summary);
+    } catch (error) {
+      this.#showSettingsError(`Import failed: ${errorMessage(error)}`);
+    }
+  }
+
+  #showSettingsStatus(text: string): void {
+    ui.settingsStatus.textContent = text;
+    ui.settingsStatus.hidden = false;
+  }
+
+  #showSettingsError(text: string): void {
+    ui.settingsError.textContent = text;
+    ui.settingsError.hidden = false;
+  }
+
+  /** Shows saved protocols with a remove button each. */
+  #renderProtocols(protocols: ProtocolsDocument | null): void {
+    const names = protocolNames(protocols);
+    ui.protocolList.replaceChildren(
+      ...names.map((name) => {
+        const item = document.createElement("li");
+        const label = document.createElement("span");
+        label.textContent = name;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "text-button danger";
+        remove.textContent = "Remove";
+        remove.setAttribute("aria-label", `Remove protocol ${name}`);
+        remove.addEventListener("click", () => void this.#removeProtocol(name));
+        item.append(label, remove);
+        return item;
+      }),
+    );
+    ui.protocolEmpty.hidden = names.length > 0;
+  }
+
+  async #removeProtocol(name: string): Promise<void> {
+    try {
+      const updated = await this.#store.update<ProtocolsDocument>("protocols", (current) =>
+        removeProtocol(current, name),
+      );
+      this.#renderProtocols(updated);
+    } catch (error) {
+      this.#showSettingsError(`Could not remove the protocol: ${errorMessage(error)}`);
     }
   }
 
