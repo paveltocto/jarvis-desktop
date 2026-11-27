@@ -26,6 +26,18 @@ describe("parseSettings", () => {
   });
 });
 
+describe("widget settings", () => {
+  it("keeps valid widgets and the weather city", () => {
+    const parsed = parseSettings({ visibleWidgets: ["goals", "bogus"], weatherCity: "  Lima " });
+    expect(parsed.visibleWidgets).toEqual(["goals"]);
+    expect(parsed.weatherCity).toBe("Lima");
+  });
+
+  it("defaults to the clock and no city", () => {
+    expect(parseSettings(null)).toMatchObject({ visibleWidgets: ["clock"], weatherCity: "" });
+  });
+});
+
 describe("voice shortcut", () => {
   it("defaults to a preset that is not Option+Space", () => {
     expect(VOICE_SHORTCUTS.map((item) => item.accelerator)).toContain(

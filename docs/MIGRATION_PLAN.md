@@ -131,7 +131,7 @@ Out of scope for v1: reading system notifications (macOS has no public API for i
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------- |
 | **0. Setup**                      | Repository, Tauri v2 + Vite + TypeScript, platform layer with Windows reporting Unsupported, tool registry, CI for macOS + Windows, legacy tool inventory                                                            | 2–3 days    | **Done**                              |
 | **1. Proof of concept**           | Transparent orb window, tray, global shortcut, microphone in Rust → Gemini Live → playback, "Hey JARVIS", permissions onboarding, `open_app`, `weather_report`. **Measure RAM, CPU and voice latency on a real Mac** | 3–5 days    | **Code done**: awaiting test on a Mac |
-| **2. Core**                       | Memory, protocols, profile, goals, reminders, scheduler, real rules engine, settings, voices, widgets, import of legacy `config/api_keys.json` into the Keychain                                                     | 1–1.5 weeks | Next                                  |
+| **2. Core**                       | Memory, protocols, profile, goals, reminders, scheduler, real rules engine, settings, voices, widgets, import of legacy `config/api_keys.json` into the Keychain                                                     | 1–1.5 weeks | **In progress**: see section 10       |
 | **3. Platform-independent tools** | Weather, YouTube, Spotify, web search, files and organizer, documents, Telegram, OpenRouter/DeepSeek, browser (`chromiumoxide`), Gmail, Calendar, morning brief                                                      | 1 week      |                                       |
 | **4. macOS integration**          | Everything in section 5                                                                                                                                                                                              | 1.5 weeks   |                                       |
 | **5. Vision and gestures**        | `screen_vision`, `vision_guardian`, `visual_click` (OCR), camera, MediaPipe gestures                                                                                                                                 | 1 week      |                                       |
@@ -186,3 +186,30 @@ Known limitations, to check on a Mac (see [TESTING_ON_MAC.md](TESTING_ON_MAC.md)
 - The synthetic Spanish-voiced "hey jarvis" clip scored only 0.04 (English voices: 0.98+). A Spanish accent may need a lower threshold (Settings → Wake-word sensitivity) or a custom model.
 - The `hey_jarvis` model is licensed CC BY-NC-SA 4.0 (non-commercial). See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 - Settings live in `localStorage` until the settings store arrives in phase 2.
+
+## 10. Phase 2 notes
+
+Done so far:
+
+- **Document store**: `memory`, `profile`, `goals` and `protocols` are JSON files in the app data folder (`data.rs`). Writes are atomic. Changes from concurrent tool calls to one document run in order (`src/data/document-store.ts`).
+- **Reminders**: stored by the Rust backend (`reminders.rs`) and fired by a scheduler thread every 15 seconds, so they work while the window is hidden. The window is shown when one fires.
+- **Tools**: `save_memory`, `activate_protocol`, `user_profile`, `goals` and `reminder`, with the legacy names and parameters where they still fit.
+- **System instruction**: memory, profile, goals and protocol names are included at the start of each voice session.
+
+Settings now live in the `settings` document, with a one-time move from `localStorage`. `shutdown_jarvis` asks for confirmation in the window.
+
+`config/api_keys.json` can be imported from Settings → "Import api_keys.json…". Only the Gemini key is stored for now; other keys are listed as skipped until their feature exists. The file is left on disk, because it holds the keys in plain text: deleting it is a decision for the user.
+
+Settings → "Import memory…" and "Import protocols…" merge the legacy `memory/long_term.json` and `protocols.json`. Entries replace older ones with the same name (memory) or are kept (protocols). Protocols can also be saved by the model with `save_protocol` (only when the user asks for it) and removed from the Protocols list in Settings.
+
+The file pickers are opened by the Rust side with `tauri-plugin-dialog`, so the webview never chooses a path to read.
+
+Widgets (block 4): clock, weather, reminders and goals, shown below the orb in the main window. They are chosen in Settings or with `jarvis_ui_control`. The weather widget uses the `weather_report` tool and a city from Settings. Widget text is set with DOM calls, never as HTML.
+
+Automation (block 5): `rules_engine` holds rules in the `rules` document. Phrase rules use Gemini's input transcription, matched per user turn, each rule at most once per turn. Schedule rules are checked every 15 seconds by the Rust scheduler, which emits `rule:due`; the webview runs the action and sets the next time. A schedule missed by more than two minutes is skipped, not run late, and rules due while JARVIS was closed are advanced without running. Rules cannot run `shutdown_jarvis` or `rules_engine`. Creating a rule always asks for confirmation in the window.
+
+Still open in phase 2: `agent_task` (priority task queue) and `show_hologram` (HTML or URL in an overlay). Each tool's status is in [legacy-tool-inventory.md](legacy-tool-inventory.md).
+
+Known issues:
+
+- `cargo clippy --all-targets -- -D warnings` fails on Rust 1.100 with `chunks_exact_to_as_chunks` in `audio/wake_word.rs` and `result_unit_err` on `audio_stop`. These predate phase 2 and are not fixed in this change.

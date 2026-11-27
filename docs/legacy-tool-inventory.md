@@ -27,16 +27,16 @@ Parameter schemas for all 66 tools are in [`legacy/tool-parameters.json`](legacy
 
 ## Core, voice and UI
 
-| Tool                | Legacy status | Decision | Phase | Notes                                                                                                                                                      |
-| ------------------- | ------------- | -------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_current_time`  | Working       | Port     | 0     | **Done.** Pure TypeScript; first tool in the registry.                                                                                                     |
-| `sleep_mode`        | Working       | Redesign | 1     | **Done.** Replaced by the `idle` voice state with local "Hey JARVIS" detection (openWakeWord). Legacy used Vosk and matched "jarvis" anywhere in the text. |
-| `shutdown_jarvis`   | Working       | Port     | 2     |                                                                                                                                                            |
-| `jarvis_ui_control` | Working       | Port     | 2     | Show and hide widgets.                                                                                                                                     |
-| `show_hologram`     | Working       | Port     | 2     | Renders HTML or a URL in an overlay window. HTML must be sandboxed.                                                                                        |
-| `activate_protocol` | Working       | Port     | 2     | Named instruction sets stored in `protocols.json`.                                                                                                         |
-| `save_memory`       | Working       | Port     | 2     | Keep the legacy `memory/*.json` format and import it on first run.                                                                                         |
-| `camera_bus`        | Working       | Port     | 5     |                                                                                                                                                            |
+| Tool                | Legacy status | Decision | Phase | Notes                                                                                                                                                                                 |
+| ------------------- | ------------- | -------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_current_time`  | Working       | Port     | 0     | **Done.** Pure TypeScript; first tool in the registry.                                                                                                                                |
+| `sleep_mode`        | Working       | Redesign | 1     | **Done.** Replaced by the `idle` voice state with local "Hey JARVIS" detection (openWakeWord). Legacy used Vosk and matched "jarvis" anywhere in the text.                            |
+| `shutdown_jarvis`   | Working       | Port     | 2     | **Done.** Asks the user to confirm in the window; the app does not quit on the model’s word.                                                                                          |
+| `jarvis_ui_control` | Working       | Port     | 2     | **Done.** `show`, `hide` and `list` for the widgets clock, weather, reminders and goals. Legacy widget names are not kept.                                                            |
+| `show_hologram`     | Working       | Port     | 2     | Renders HTML or a URL in an overlay window. HTML must be sandboxed.                                                                                                                   |
+| `activate_protocol` | Working       | Port     | 2     | **Done.** Reads the `protocols` document. Protocols are created with `save_protocol` and removed from Settings or with `remove_protocol`; "Import protocols…" merges the legacy file. |
+| `save_memory`       | Working       | Port     | 2     | **Done.** Stored as `memory.json` in the legacy layout. Settings → "Import memory…" merges the legacy `memory/long_term.json`.                                                        |
+| `camera_bus`        | Working       | Port     | 5     |                                                                                                                                                                                       |
 
 ## System control
 
@@ -99,16 +99,16 @@ The Telegram bot (`core/telegram_bot.py`) is not a tool, but it is ported as a b
 
 ## Productivity and automation
 
-| Tool                   | Legacy status | Decision  | Phase | Notes                                                                                 |
-| ---------------------- | ------------- | --------- | ----- | ------------------------------------------------------------------------------------- |
-| `reminder`             | Working       | Port      | 2     |                                                                                       |
-| `goals`                | Working       | Port      | 2     |                                                                                       |
-| `user_profile`         | Working       | Port      | 2     |                                                                                       |
-| `agent_task`           | Working       | Port      | 2     | Priority task queue.                                                                  |
-| `rules_engine`         | Partial       | Complete  | 2     | Legacy matches trigger phrases but never runs the action (`_run_action` only prints). |
-| `proactive_automation` | Working       | Merge     | 2     | Overlaps with `rules_engine`; one automation engine in Rust.                          |
-| `scheduler`            | Stub          | Implement | 2     | Rust backend service so it runs while the window is hidden.                           |
-| `morning_brief`        | Stub          | Implement | 3     | Weather, calendar, email summary.                                                     |
+| Tool                   | Legacy status | Decision  | Phase | Notes                                                                                                                                                                                       |
+| ---------------------- | ------------- | --------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reminder`             | Working       | Port      | 2     | **Done.** Fired by the Rust scheduler, so it works while the window is hidden. Recurring schedules are not done (`scheduler`).                                                              |
+| `goals`                | Working       | Port      | 2     | **Done.** Add, list, progress, complete step and remove.                                                                                                                                    |
+| `user_profile`         | Working       | Port      | 2     | **Done.** `get`, `set` and `remove` save for real. The legacy version reported success without saving.                                                                                      |
+| `agent_task`           | Working       | Port      | 2     | Priority task queue.                                                                                                                                                                        |
+| `rules_engine`         | Partial       | Complete  | 2     | **Done.** Phrase rules run when the user says the phrase (Gemini input transcription). Schedules run daily, weekly or every N minutes. Creating a rule asks for confirmation in the window. |
+| `proactive_automation` | Working       | Merge     | 2     | **Done** through `rules_engine`, which is the single automation engine.                                                                                                                     |
+| `scheduler`            | Stub          | Implement | 2     | **Done** for one-shot reminders (Rust scheduler) and for recurring rules, which the Rust scheduler reports and the webview runs.                                                            |
+| `morning_brief`        | Stub          | Implement | 3     | Weather, calendar, email summary.                                                                                                                                                           |
 
 ## AI and development
 

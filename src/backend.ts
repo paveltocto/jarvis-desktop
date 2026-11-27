@@ -4,6 +4,8 @@
  */
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { DocumentBackend, DocumentName } from "./data/document-store";
+import type { Reminder, ReminderApi } from "./tools/types";
 import type { AudioBackend } from "./voice/controller";
 
 export interface InputDeviceInfo {
@@ -41,13 +43,48 @@ export const secrets = {
   delete: (name: SecretName) => invoke<undefined>("secret_delete", { name }),
 };
 
+/** One-time import of the legacy api_keys.json. Returns names only, never values. */
+export interface LegacyImportReport {
+  imported: string[];
+  skipped: { name: string; reason: string }[];
+}
+
+/**
+ * Legacy imports. The Rust side shows the file picker, so the webview never
+ * chooses a path. `null` means the user cancelled.
+ */
+export const legacy = {
+  importKeys: () => invoke<LegacyImportReport | null>("legacy_import_keys"),
+  readDocument: () => invoke<unknown | null>("legacy_read_document"),
+};
+
+export const app = {
+  /** Quits JARVIS. Only call after the user confirmed. */
+  quit: () => invoke<undefined>("app_quit"),
+};
+
 export const shell = {
   /** Replaces the global voice shortcut; rejects and keeps the old one on failure. */
   setVoiceShortcut: (accelerator: string) =>
     invoke<undefined>("voice_shortcut_set", { accelerator }),
 };
 
+export const documents: DocumentBackend = {
+  read: (name: DocumentName) => invoke<unknown | null>("data_read", { name }),
+  write: (name: DocumentName, value: unknown) => invoke<undefined>("data_write", { name, value }),
+};
+
+export const reminders: ReminderApi = {
+  add: (message, dueAtMs) => invoke<Reminder>("reminder_add", { message, dueAtMs }),
+  list: () => invoke<Reminder[]>("reminder_list"),
+  cancel: (id) => invoke<boolean>("reminder_cancel", { id }),
+};
+
 export const events = {
+  ruleDue: (handler: (due: { id: string; nextRunAtMs: number }) => void): Promise<UnlistenFn> =>
+    listen<{ id: string; nextRunAtMs: number }>("rule:due", (event) => handler(event.payload)),
+  reminderDue: (handler: (reminder: Reminder) => void): Promise<UnlistenFn> =>
+    listen<Reminder>("reminder:due", (event) => handler(event.payload)),
   audioLevel: (handler: (rms: number) => void): Promise<UnlistenFn> =>
     listen<number>("audio:level", (event) => handler(event.payload)),
   wakeWord: (handler: (score: number) => void): Promise<UnlistenFn> =>

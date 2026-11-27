@@ -26,6 +26,7 @@ keyring = "4.2.0"
 tauri-plugin-global-shortcut = "2.4.1"
 tauri-plugin-single-instance = "2.5.5"
 log = "0.4.35"
+tauri-plugin-dialog = "2"
 
 [lints.rust]
 unsafe_code = "forbid"

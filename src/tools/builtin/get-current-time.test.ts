@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ToolContext } from "../types";
+import { testContext } from "../testing/context";
 import { getCurrentTime } from "./get-current-time";
 
-const ctx: ToolContext = {
-  os: "macos",
-  capabilities: [],
-  now: () => new Date("2026-03-15T17:30:00Z"),
-  fetch: () => Promise.reject(new Error("no network in tests")),
-  system: { openApp: () => Promise.resolve() },
-};
+const ctx = testContext({ now: () => new Date("2026-03-15T17:30:00Z") });
 
 describe("get_current_time", () => {
   it("formats the time in the requested time zone", async () => {

@@ -1,3 +1,6 @@
+import type { DocumentStore } from "../data/document-store";
+import type { Rule } from "../rules/model";
+import { InvalidInput } from "../data/records";
 import type { Capability, Os } from "../platform";
 
 /**
@@ -29,6 +32,38 @@ export interface SystemApi {
   openApp(name: string): Promise<void>;
 }
 
+/** A reminder as stored by the Rust scheduler. */
+export interface Reminder {
+  id: string;
+  message: string;
+  /** Unix time in milliseconds. */
+  dueAtMs: number;
+}
+
+/** Reminder operations implemented by the Rust backend (`reminders.rs`). */
+export interface ReminderApi {
+  add(message: string, dueAtMs: number): Promise<Reminder>;
+  list(): Promise<Reminder[]>;
+  cancel(id: string): Promise<boolean>;
+}
+
+/** App-level actions. Anything that closes the app asks the user first. */
+export interface AppApi {
+  /** Shows a confirmation in the JARVIS window. Resolves once it is shown, not once the user answers. */
+  requestQuit(): Promise<void>;
+}
+
+/** Rule creation waits for the user's confirmation in the window. */
+export interface RulesApi {
+  requestCreate(rule: Rule): Promise<void>;
+}
+
+/** Widget visibility, changed by the user or by tools. */
+export interface WidgetsApi {
+  list(): { id: string; visible: boolean }[];
+  setVisible(id: string, visible: boolean): Promise<void>;
+}
+
 /** Runtime information and services passed to every tool. */
 export interface ToolContext {
   os: Os;
@@ -36,6 +71,13 @@ export interface ToolContext {
   now: () => Date;
   fetch: typeof fetch;
   system: SystemApi;
+  store: DocumentStore;
+  reminders: ReminderApi;
+  app: AppApi;
+  widgets: WidgetsApi;
+  rules: RulesApi;
+  /** Names of the tools rules may run (the registry's tools, minus the excluded ones). */
+  knownTools: readonly string[];
 }
 
 export interface ToolDefinition {
@@ -65,3 +107,9 @@ export const fail = (code: ToolErrorCode, error: string): ToolResult => ({
   code,
   error,
 });
+
+/** Maps an exception thrown inside a tool to a failed result. */
+export function failureFrom(error: unknown): ToolResult {
+  if (error instanceof InvalidInput) return fail("invalid_arguments", error.message);
+  return fail("failed", error instanceof Error ? error.message : String(error));
+}

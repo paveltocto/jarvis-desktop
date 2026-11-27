@@ -6,8 +6,12 @@ export interface GeminiLiveOptions {
   apiKey: string;
   model: string;
   voice: string;
-  systemInstruction: () => string;
+  systemInstruction: () => string | Promise<string>;
   tools: () => FunctionDeclaration[];
+  /** Text of what the user said, in pieces. Used for phrase rules. */
+  onInputTranscript?: (text: string) => void;
+  /** The model finished its turn; the user's next words start a new turn. */
+  onTurnEnd?: () => void;
 }
 
 /**
@@ -33,7 +37,8 @@ export function createGeminiSessionFactory(options: GeminiLiveOptions): SessionF
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: options.voice } } },
-        systemInstruction: options.systemInstruction(),
+        systemInstruction: await options.systemInstruction(),
+        inputAudioTranscription: {},
         ...(functionDeclarations.length > 0 ? { tools: [{ functionDeclarations }] } : {}),
       },
       callbacks: {
@@ -44,7 +49,12 @@ export function createGeminiSessionFactory(options: GeminiLiveOptions): SessionF
             if (data && part.inlineData?.mimeType?.startsWith("audio/")) handlers.onAudio(data);
           }
           if (content?.interrupted) handlers.onInterrupted();
-          if (content?.turnComplete) handlers.onTurnComplete();
+          const transcript = content?.inputTranscription?.text;
+          if (transcript) options.onInputTranscript?.(transcript);
+          if (content?.turnComplete) {
+            handlers.onTurnComplete();
+            options.onTurnEnd?.();
+          }
 
           const calls: ToolCall[] = (message.toolCall?.functionCalls ?? []).map((call) => ({
             id: call.id ?? "",
