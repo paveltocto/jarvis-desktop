@@ -2,6 +2,9 @@
 //! loopback redirect. The user brings their own OAuth client, entered in
 //! Settings. Refresh tokens stay in the OS credential store; the webview only
 //! receives short-lived access tokens.
+//!
+//! Spotify has one account, handled here. Google has several, kept by
+//! `google_accounts.rs` on top of [`authorize`] and [`refresh`].
 
 use crate::secrets;
 use base64::Engine;
@@ -38,7 +41,6 @@ struct Config {
     client_id_secret: &'static str,
     /// Google requires the (not really secret) client secret of desktop clients.
     client_secret_secret: Option<&'static str>,
-    refresh_token_secret: &'static str,
     port: u16,
 }
 
@@ -54,7 +56,6 @@ impl Provider {
                          https://www.googleapis.com/auth/calendar.events",
                 client_id_secret: "google_client_id",
                 client_secret_secret: Some("google_client_secret"),
-                refresh_token_secret: "google_refresh_token",
                 port: 0,
             },
             Self::Spotify => Config {
@@ -65,12 +66,14 @@ impl Provider {
                          user-read-currently-playing",
                 client_id_secret: "spotify_client_id",
                 client_secret_secret: None,
-                refresh_token_secret: "spotify_refresh_token",
                 port: SPOTIFY_REDIRECT_PORT,
             },
         }
     }
 }
+
+/// Where Spotify's refresh token is stored, and its key in the token cache.
+const SPOTIFY_TOKEN: &str = "spotify_refresh_token";
 
 #[derive(Debug, thiserror::Error)]
 pub enum OAuthError {
@@ -78,6 +81,8 @@ pub enum OAuthError {
     NotConfigured(&'static str),
     #[error("{0} is not connected: connect it in Settings › Services")]
     NotConnected(&'static str),
+    #[error("Google account {0} is not connected anymore: reconnect it in Settings › Services")]
+    AccountNotConnected(String),
     #[error("{0}")]
     Failed(String),
     #[error("{0}")]
@@ -93,9 +98,9 @@ impl Serialize for OAuthError {
     }
 }
 
-type Result<T> = std::result::Result<T, OAuthError>;
+pub(crate) type Result<T> = std::result::Result<T, OAuthError>;
 
-fn failed(message: impl Into<String>) -> OAuthError {
+pub(crate) fn failed(message: impl Into<String>) -> OAuthError {
     OAuthError::Failed(message.into())
 }
 
@@ -106,27 +111,28 @@ pub struct Status {
     pub connected: bool,
 }
 
-/// Access tokens kept in memory until they expire.
+/// Access tokens kept in memory until they expire, one per refresh token
+/// (keyed by its name in the credential store).
 #[derive(Default)]
-pub struct TokenCache(Mutex<HashMap<Provider, (String, Instant)>>);
+pub struct TokenCache(Mutex<HashMap<String, (String, Instant)>>);
 
 impl TokenCache {
-    fn get(&self, provider: Provider) -> Option<String> {
+    pub(crate) fn get(&self, key: &str) -> Option<String> {
         let cache = self.0.lock().ok()?;
-        let (token, expires) = cache.get(&provider)?;
+        let (token, expires) = cache.get(key)?;
         (Instant::now() < *expires).then(|| token.clone())
     }
 
-    fn put(&self, provider: Provider, token: &str, lifetime: Duration) {
+    pub(crate) fn put(&self, key: &str, token: &str, lifetime: Duration) {
         if let Ok(mut cache) = self.0.lock() {
             let expires = Instant::now() + lifetime.saturating_sub(EXPIRY_MARGIN);
-            cache.insert(provider, (token.to_owned(), expires));
+            cache.insert(key.to_owned(), (token.to_owned(), expires));
         }
     }
 
-    fn forget(&self, provider: Provider) {
+    pub(crate) fn forget(&self, key: &str) {
         if let Ok(mut cache) = self.0.lock() {
-            cache.remove(&provider);
+            cache.remove(key);
         }
     }
 }
@@ -146,22 +152,21 @@ fn client(config: &Config) -> Result<Client> {
     Ok(Client { id, secret })
 }
 
-pub fn status(provider: Provider) -> Result<Status> {
-    let config = provider.config();
-    let configured = match client(&config) {
+pub fn spotify_status() -> Result<Status> {
+    let configured = match client(&Provider::Spotify.config()) {
         Ok(_) => true,
         Err(OAuthError::NotConfigured(_)) => false,
         Err(error) => return Err(error),
     };
     Ok(Status {
         configured,
-        connected: secrets::get(config.refresh_token_secret)?.is_some(),
+        connected: secrets::get(SPOTIFY_TOKEN)?.is_some(),
     })
 }
 
-pub fn disconnect(provider: Provider, cache: &TokenCache) -> Result<()> {
-    cache.forget(provider);
-    Ok(secrets::delete(provider.config().refresh_token_secret)?)
+pub fn spotify_disconnect(cache: &TokenCache) -> Result<()> {
+    cache.forget(SPOTIFY_TOKEN);
+    Ok(secrets::delete(SPOTIFY_TOKEN)?)
 }
 
 fn random_token() -> Result<String> {
@@ -180,6 +185,7 @@ fn authorization_url(
     redirect_uri: &str,
     state: &str,
     verifier: &str,
+    login_hint: Option<&str>,
 ) -> Result<Url> {
     let mut url = Url::parse(config.auth_url).map_err(|error| failed(error.to_string()))?;
     url.query_pairs_mut()
@@ -192,9 +198,14 @@ fn authorization_url(
         .append_pair("code_challenge_method", "S256");
     if config.client_secret_secret.is_some() {
         // Google only returns a refresh token when asked like this.
+        // `select_account` lets the user add an account other than the one
+        // already signed in to the browser.
         url.query_pairs_mut()
             .append_pair("access_type", "offline")
-            .append_pair("prompt", "consent");
+            .append_pair("prompt", "select_account consent");
+    }
+    if let Some(email) = login_hint {
+        url.query_pairs_mut().append_pair("login_hint", email);
     }
     Ok(url)
 }
@@ -319,12 +330,29 @@ fn lifetime(body: &Value) -> Duration {
     Duration::from_secs(body["expires_in"].as_u64().unwrap_or(0))
 }
 
-/// Runs the whole sign-in. `open_browser` shows the provider's consent page.
-pub async fn connect(
+/// The permissions in a token answer. With Google's per-permission consent
+/// they can be fewer than were asked for. `None` when the answer omits them.
+fn granted_scopes(body: &Value) -> Option<Vec<String>> {
+    body["scope"]
+        .as_str()
+        .map(|scopes| scopes.split_whitespace().map(str::to_owned).collect())
+}
+
+/// What a completed sign-in returns.
+pub(crate) struct SignIn {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub lifetime: Duration,
+    pub scopes: Vec<String>,
+}
+
+/// Runs the browser sign-in and returns the tokens without storing them.
+/// `open_browser` shows the provider's consent page.
+pub(crate) async fn authorize(
     provider: Provider,
-    cache: &TokenCache,
+    login_hint: Option<&str>,
     open_browser: impl FnOnce(&str) -> std::result::Result<(), String>,
-) -> Result<()> {
+) -> Result<SignIn> {
     let config = provider.config();
     let client_id = client(&config)?.id;
     let listener = TcpListener::bind(("127.0.0.1", config.port)).map_err(|error| {
@@ -340,7 +368,14 @@ pub async fn connect(
     let redirect_uri = format!("http://127.0.0.1:{port}/callback");
     let state = random_token()?;
     let verifier = random_token()?;
-    let url = authorization_url(&config, &client_id, &redirect_uri, &state, &verifier)?;
+    let url = authorization_url(
+        &config,
+        &client_id,
+        &redirect_uri,
+        &state,
+        &verifier,
+        login_hint,
+    )?;
     open_browser(url.as_str()).map_err(failed)?;
 
     let code = tauri::async_runtime::spawn_blocking(move || {
@@ -368,24 +403,30 @@ pub async fn connect(
             config.name
         )));
     };
-    secrets::set(config.refresh_token_secret, refresh)?;
-    cache.put(provider, access, lifetime(&body));
-    Ok(())
+    Ok(SignIn {
+        access_token: access.to_owned(),
+        refresh_token: refresh.to_owned(),
+        lifetime: lifetime(&body),
+        scopes: granted_scopes(&body).unwrap_or_default(),
+    })
 }
 
-/// A valid access token, renewed with the refresh token when needed.
-pub async fn access_token(provider: Provider, cache: &TokenCache) -> Result<String> {
-    if let Some(token) = cache.get(provider) {
-        return Ok(token);
-    }
+/// A renewed access token.
+pub(crate) struct Renewal {
+    pub access_token: String,
+    /// Set when the provider replaced the refresh token.
+    pub refresh_token: Option<String>,
+    pub lifetime: Duration,
+    pub scopes: Option<Vec<String>>,
+}
+
+pub(crate) async fn refresh(provider: Provider, refresh_token: &str) -> Result<Renewal> {
     let config = provider.config();
-    let refresh =
-        secrets::get(config.refresh_token_secret)?.ok_or(OAuthError::NotConnected(config.name))?;
     let body = token_request(
         &config,
         vec![
             ("grant_type", "refresh_token".to_owned()),
-            ("refresh_token", refresh),
+            ("refresh_token", refresh_token.to_owned()),
         ],
     )
     .await?;
@@ -395,12 +436,37 @@ pub async fn access_token(provider: Provider, cache: &TokenCache) -> Result<Stri
             config.name
         )));
     };
-    // Spotify replaces the refresh token now and then.
-    if let Some(rotated) = body["refresh_token"].as_str() {
-        secrets::set(config.refresh_token_secret, rotated)?;
+    Ok(Renewal {
+        access_token: access.to_owned(),
+        refresh_token: body["refresh_token"].as_str().map(str::to_owned),
+        lifetime: lifetime(&body),
+        scopes: granted_scopes(&body),
+    })
+}
+
+pub async fn spotify_connect(
+    cache: &TokenCache,
+    open_browser: impl FnOnce(&str) -> std::result::Result<(), String>,
+) -> Result<()> {
+    let signed_in = authorize(Provider::Spotify, None, open_browser).await?;
+    secrets::set(SPOTIFY_TOKEN, &signed_in.refresh_token)?;
+    cache.put(SPOTIFY_TOKEN, &signed_in.access_token, signed_in.lifetime);
+    Ok(())
+}
+
+/// A valid Spotify access token, renewed with the refresh token when needed.
+pub async fn spotify_access_token(cache: &TokenCache) -> Result<String> {
+    if let Some(token) = cache.get(SPOTIFY_TOKEN) {
+        return Ok(token);
     }
-    cache.put(provider, access, lifetime(&body));
-    Ok(access.to_owned())
+    let stored = secrets::get(SPOTIFY_TOKEN)?.ok_or(OAuthError::NotConnected("Spotify"))?;
+    let renewed = refresh(Provider::Spotify, &stored).await?;
+    // Spotify replaces the refresh token now and then.
+    if let Some(rotated) = &renewed.refresh_token {
+        secrets::set(SPOTIFY_TOKEN, rotated)?;
+    }
+    cache.put(SPOTIFY_TOKEN, &renewed.access_token, renewed.lifetime);
+    Ok(renewed.access_token)
 }
 
 #[cfg(test)]
@@ -419,17 +485,39 @@ mod tests {
     #[test]
     fn authorization_url_carries_state_and_pkce() {
         let config = Provider::Google.config();
+        let redirect = "http://127.0.0.1:1/callback";
         let url =
-            authorization_url(&config, "id", "http://127.0.0.1:1/callback", "s", "v").expect("url");
+            authorization_url(&config, "id", redirect, "s", "v", Some("a@b.test")).expect("url");
         let query = url.query().unwrap_or_default();
         for expected in [
             "state=s",
             "code_challenge_method=S256",
             "access_type=offline",
+            "prompt=select_account+consent",
+            "login_hint=a%40b.test",
         ] {
             assert!(query.contains(expected), "{expected}");
         }
         assert!(!query.contains("code_verifier"));
+    }
+
+    #[test]
+    fn reads_the_permissions_that_were_granted() {
+        let body = serde_json::json!({ "scope": "a  b" });
+        assert_eq!(granted_scopes(&body), Some(vec!["a".into(), "b".into()]));
+        assert_eq!(granted_scopes(&serde_json::json!({})), None);
+    }
+
+    #[test]
+    fn keeps_a_token_per_account() {
+        let cache = TokenCache::default();
+        cache.put("one", "first", Duration::from_secs(600));
+        cache.put("two", "second", Duration::from_secs(600));
+        cache.put("short", "expired", EXPIRY_MARGIN);
+        cache.forget("one");
+        assert_eq!(cache.get("one"), None);
+        assert_eq!(cache.get("two").as_deref(), Some("second"));
+        assert_eq!(cache.get("short"), None);
     }
 
     #[test]

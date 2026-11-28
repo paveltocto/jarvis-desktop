@@ -823,6 +823,42 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1;
 }
 
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.account-email {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.account-actions label {
+  flex: 1 0 100%;
+}
+
 /* ---------------------------------------------------------------- approvals */
 
 /* Covers the view below the title bar until the user answers. */

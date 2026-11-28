@@ -63,7 +63,7 @@ One `ToolDefinition` per file in `src/tools/builtin/`, registered in `src/tools/
 
 Quitting, rule creation, sending messages or email and calendar changes only show a confirmation in the window, so the tool result must not claim the action already happened (use `askUser` in `src/tools/approval.ts`).
 
-Backend services that need a private credential or are blocked by CORS live in `src-tauri/src/services/` (OAuth, Telegram, YouTube, the Chrome controller, system figures). Telegram messages can only run the tools in `REMOTE_TOOLS` (`src/remote/telegram-agent.ts`); do not add one that touches files, mail or the browser.
+Backend services that need a private credential or are blocked by CORS live in `src-tauri/src/services/` (OAuth, Telegram, YouTube, the Chrome controller, system figures). Google tools choose accounts through `src/google/accounts.ts`: reads cover all of them, and a write never guesses which. Telegram messages can only run the tools in `REMOTE_TOOLS` (`src/remote/telegram-agent.ts`); do not add one that touches files, mail or the browser.
 
 ### Platform layer
 
@@ -75,7 +75,7 @@ To add an OS feature: add a method to the `Platform` trait with an `Unsupported`
 
 - Each JSON document in the app data folder has a single writer.
 - The webview writes memory, profile, goals, protocols, settings and rules. Make changes through `DocumentStore.update`, which serializes read-modify-write per document so concurrent tool calls cannot overwrite each other.
-- Rust alone writes reminders (`reminders.rs`).
+- Rust alone writes reminders (`reminders.rs`) and the Google account list (`services/google_accounts.rs`).
 - The scheduler thread in `reminders.rs` ticks every 15 s. It fires reminders and, through `rules.rs`, reads the rules document and emits `rule:due`. The webview runs the action and advances `nextRunAtMs`. Runs more than two minutes late are skipped.
 - Phrase rules are matched in the webview against Gemini's input transcription. Rules cannot run the tools in `RULE_EXCLUDED_TOOLS`.
 - API keys live only in the OS credential store.

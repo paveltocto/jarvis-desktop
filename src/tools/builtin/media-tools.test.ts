@@ -7,7 +7,7 @@ import { systemMonitor } from "./system-monitor";
 import { youtubeVideo } from "./youtube-video";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const connected = { accessToken: async () => "token" };
+const connected = { ...testContext().accounts, accessToken: async () => "token" };
 
 describe("youtube_video", () => {
   it("does not claim to play when no video was found", async () => {

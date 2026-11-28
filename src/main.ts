@@ -29,6 +29,7 @@ import {
   VOICES,
 } from "./config";
 import { createDocumentStore } from "./data/document-store";
+import { formatAccountsForPrompt } from "./google/accounts";
 import { fetchWeather } from "./tools/builtin/weather-report";
 import { InvalidInput } from "./data/records";
 import {
@@ -201,9 +202,13 @@ class App {
       exists: (name) => secrets.exists(name),
       set: (name, value) => secrets.set(name, value),
       delete: (name) => secrets.delete(name),
-      status: (provider) => accounts.status(provider),
-      connect: (provider) => accounts.connect(provider),
-      disconnect: (provider) => accounts.disconnect(provider),
+      spotifyStatus: () => accounts.spotifyStatus(),
+      spotifyConnect: () => accounts.spotifyConnect(),
+      spotifyDisconnect: () => accounts.spotifyDisconnect(),
+      googleAccounts: () => accounts.googleAccounts(),
+      googleConnect: (loginHint) => accounts.googleConnect(loginHint),
+      googleDisconnect: (id) => accounts.googleDisconnect(id),
+      googleUpdate: (id, alias, makeDefault) => accounts.googleUpdate(id, alias, makeDefault),
     },
     {
       status: (text) => {
@@ -536,6 +541,8 @@ class App {
   /** Builds the system instruction, including what the user asked JARVIS to remember. */
   async #systemInstruction(): Promise<string> {
     try {
+      // Without the account list the session still works; the tools report the problem.
+      const googleAccounts = await accounts.googleAccounts().catch(() => []);
       const [memory, profile, goals, protocols] = await Promise.all([
         this.#store.read<MemoryDocument>("memory"),
         this.#store.read<ProfileDocument>("profile"),
@@ -547,6 +554,7 @@ class App {
         formatProfileForPrompt(profile),
         formatGoalsForPrompt(goals),
         formatProtocolNamesForPrompt(protocols),
+        formatAccountsForPrompt(googleAccounts),
       ]);
     } catch (error) {
       showNotice(`Stored memory could not be read: ${errorMessage(error)}`);
