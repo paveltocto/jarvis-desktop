@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- a missing value should fail the test */
 import { describe, expect, it, vi } from "vitest";
-import { testContext } from "../testing/context";
+import { googleAccount, googleAccounts, testContext } from "../testing/context";
 import type { Approval } from "../types";
 import { gmailControl } from "./gmail-control";
 import { googleCalendar } from "./google-calendar";
@@ -12,7 +12,7 @@ function approvals() {
 }
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const connected = { accessToken: async () => "token" };
+const connected = googleAccounts(googleAccount("me", { isDefault: true }));
 
 describe("unified_communications", () => {
   it("sends nothing on Telegram until the user confirms", async () => {
@@ -78,7 +78,7 @@ describe("gmail_control", () => {
       testContext({ fetch, accounts: connected, approvals: ui }),
     );
     expect(fetch).not.toHaveBeenCalled();
-    await expect(ui.asked[0]!.run()).resolves.toBe("Email sent to a@b.test.");
+    await expect(ui.asked[0]!.run()).resolves.toBe("Email sent from me@x.test to a@b.test.");
     expect(fetch.mock.calls[0]?.[0]).toMatch(/\/messages\/send$/);
   });
 });
@@ -95,7 +95,7 @@ describe("google_calendar", () => {
       testContext({ fetch, accounts: connected }),
     );
     expect(result).toMatchObject({
-      output: "- 2026-01-02 (all day): Dentist [event_id e1]",
+      output: "- 2026-01-02 (all day): Dentist [account me@x.test, event_id e1]",
     });
   });
 
@@ -121,7 +121,7 @@ describe("google_calendar", () => {
     );
     expect(result).toMatchObject({
       ok: false,
-      error: "Google Calendar returned HTTP 403: API disabled.",
+      error: "me@x.test: Not available: Google Calendar returned HTTP 403: API disabled.",
     });
   });
 });

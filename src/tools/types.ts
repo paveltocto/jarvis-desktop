@@ -96,9 +96,26 @@ export type ReadableSecret =
 
 export type OAuthProvider = "google" | "spotify";
 
+/** Mirrors `google_accounts::AccountView`. */
+export interface GoogleAccount {
+  id: string;
+  email: string;
+  /** The user's short name for it, such as "work". */
+  alias: string | null;
+  /** Used for sending and creating when no account is named. */
+  isDefault: boolean;
+  mailRead: boolean;
+  mailSend: boolean;
+  calendar: boolean;
+}
+
 export interface AccountsApi {
-  /** A short-lived access token. Rejects when the account is not connected. */
-  accessToken(provider: OAuthProvider): Promise<string>;
+  /**
+   * A short-lived access token. Google needs the account's id. Rejects when
+   * the account is not connected.
+   */
+  accessToken(provider: OAuthProvider, accountId?: string): Promise<string>;
+  googleAccounts(): Promise<GoogleAccount[]>;
 }
 
 export interface MessagingApi {

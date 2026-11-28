@@ -3,7 +3,7 @@ import {
   type DocumentBackend,
   type DocumentName,
 } from "../../data/document-store";
-import type { Reminder, ToolContext } from "../types";
+import type { GoogleAccount, Reminder, ToolContext } from "../types";
 
 /** Document backend that keeps everything in memory. */
 export function memoryBackend(
@@ -42,6 +42,28 @@ export function memoryReminders(): ToolContext["reminders"] & { items: Reminder[
   };
 }
 
+/** A connected Google account with every permission. */
+export function googleAccount(id: string, overrides: Partial<GoogleAccount> = {}): GoogleAccount {
+  return {
+    id,
+    email: `${id}@x.test`,
+    alias: null,
+    isDefault: false,
+    mailRead: true,
+    mailSend: true,
+    calendar: true,
+    ...overrides,
+  };
+}
+
+/** Connected accounts whose access token names the account: `token-<id>`. */
+export function googleAccounts(...accounts: GoogleAccount[]): ToolContext["accounts"] {
+  return {
+    googleAccounts: async () => accounts,
+    accessToken: async (_provider, accountId) => `token-${accountId ?? ""}`,
+  };
+}
+
 /**
  * A tool context for tests. Network, OS and storage calls fail unless
  * overridden: documents live in memory and reminders are kept in a list.
@@ -66,7 +88,10 @@ export function testContext(overrides: Partial<ToolContext> = {}): ToolContext {
       change: () => Promise.reject(new Error("no files in tests")),
     },
     secrets: { get: async () => null },
-    accounts: { accessToken: () => Promise.reject(new Error("not connected in tests")) },
+    accounts: {
+      accessToken: () => Promise.reject(new Error("not connected in tests")),
+      googleAccounts: async () => [],
+    },
     messaging: { telegram: () => Promise.reject(new Error("no network in tests")) },
     approvals: { request: () => Promise.reject(new Error("no UI in tests")) },
     store: createDocumentStore(memoryBackend()),

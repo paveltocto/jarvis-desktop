@@ -48,6 +48,9 @@ pub fn run() {
             app.manage(Arc::clone(&reminders));
             let profile = data_dir.0.join("browser-profile");
             app.manage(services::browser::BrowserService::new(profile));
+            app.manage(services::google_accounts::GoogleAccounts::new(
+                data_dir.clone(),
+            ));
             reminders::spawn_scheduler(app.handle().clone(), reminders, data_dir.clone());
             services::telegram::spawn_listener(app.handle().clone(), data_dir);
             shell::setup_tray(app)?;
@@ -70,9 +73,13 @@ pub fn run() {
             commands::system_stats,
             commands::youtube_search,
             commands::telegram_send,
-            commands::oauth_status,
-            commands::oauth_connect,
-            commands::oauth_disconnect,
+            commands::spotify_status,
+            commands::spotify_connect,
+            commands::spotify_disconnect,
+            commands::google_accounts,
+            commands::google_connect,
+            commands::google_disconnect,
+            commands::google_account_update,
             commands::oauth_access_token,
             commands::browser_run,
             commands::files_query,

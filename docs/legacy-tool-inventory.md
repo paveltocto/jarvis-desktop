@@ -84,16 +84,16 @@ Parameter schemas for all 66 tools are in [`legacy/tool-parameters.json`](legacy
 
 ## Communication
 
-| Tool                     | Legacy status | Decision  | Phase | Notes                                                                                                                                           |
-| ------------------------ | ------------- | --------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unified_communications` | Working       | Port      | 3     | **Done** for Telegram (own chat only) and Discord (own webhook), both after confirmation; `email` opens a draft. WhatsApp waits for phase 4.    |
-| `send_message`           | Missing       | Merge     | 3     | **Done**: merged into `unified_communications`.                                                                                                 |
-| `whatsapp`               | Working       | Redesign  | 4     | macOS: `whatsapp://send` URL scheme plus key press.                                                                                             |
-| `gmail_control`          | Stub          | Implement | 3     | **Done**, not yet tried with a real account. Unread, search, read and send (after confirmation); the user brings their own Google OAuth client. |
-| `google_calendar`        | Stub          | Implement | 3     | **Done**, not yet tried with a real account. List, create and delete on the primary calendar; changes need confirmation.                        |
-| `google_drive`           | Stub          | Defer     | —     |                                                                                                                                                 |
-| `google_maps`            | Stub          | Defer     | —     |                                                                                                                                                 |
-| `social_media`           | Stub          | Defer     | —     |                                                                                                                                                 |
+| Tool                     | Legacy status | Decision  | Phase | Notes                                                                                                                                                                    |
+| ------------------------ | ------------- | --------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `unified_communications` | Working       | Port      | 3     | **Done** for Telegram (own chat only) and Discord (own webhook), both after confirmation; `email` opens a draft. WhatsApp waits for phase 4.                             |
+| `send_message`           | Missing       | Merge     | 3     | **Done**: merged into `unified_communications`.                                                                                                                          |
+| `whatsapp`               | Working       | Redesign  | 4     | macOS: `whatsapp://send` URL scheme plus key press.                                                                                                                      |
+| `gmail_control`          | Stub          | Implement | 3     | **Done**, not yet tried with a real account. Unread, search, read and send (after confirmation), across several Google accounts; the user brings their own OAuth client. |
+| `google_calendar`        | Stub          | Implement | 3     | **Done**, not yet tried with a real account. List, create and delete on the primary calendar of each Google account; changes need confirmation and name the account.     |
+| `google_drive`           | Stub          | Defer     | —     |                                                                                                                                                                          |
+| `google_maps`            | Stub          | Defer     | —     |                                                                                                                                                                          |
+| `social_media`           | Stub          | Defer     | —     |                                                                                                                                                                          |
 
 The Telegram bot (`core/telegram_bot.py`) is not a tool. **Done**, not yet tried with a real bot: `services/telegram.rs` polls for the owner's messages (off by default) and the webview answers with DeepSeek or OpenRouter. It reaches only time, weather, system use, reminders, goals and Spotify; the legacy screenshot, typing, window and file commands are not available remotely.
 
@@ -108,7 +108,7 @@ The Telegram bot (`core/telegram_bot.py`) is not a tool. **Done**, not yet tried
 | `rules_engine`         | Partial       | Complete  | 2     | **Done.** Phrase rules run when the user says the phrase (Gemini input transcription). Schedules run daily, weekly or every N minutes. Creating a rule asks for confirmation in the window. |
 | `proactive_automation` | Working       | Merge     | 2     | **Done** through `rules_engine`, which is the single automation engine.                                                                                                                     |
 | `scheduler`            | Stub          | Implement | 2     | **Done** for one-shot reminders (Rust scheduler) and for recurring rules, which the Rust scheduler reports and the webview runs.                                                            |
-| `morning_brief`        | Stub          | Implement | 3     | **Done.** Weather, calendar, unread email, reminders and goals; a section that cannot be read says why.                                                                                     |
+| `morning_brief`        | Stub          | Implement | 3     | **Done.** Weather, calendar and unread email from every Google account, reminders and goals; a section or account that cannot be read says why.                                             |
 
 ## AI and development
 

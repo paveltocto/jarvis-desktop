@@ -13,6 +13,7 @@ use crate::platform::{self, PlatformError, PlatformInfo, PrivacyPane};
 use crate::reminders::{self, Reminder, ReminderError, Reminders};
 use crate::secrets::{self, SecretError};
 use crate::services::browser::{self, BrowserService};
+use crate::services::google_accounts::{AccountView, Connected, GoogleAccounts};
 use crate::services::oauth::{self, OAuthError, Provider, TokenCache};
 use crate::services::system_stats::{self, ProcessSort, SystemStats};
 use crate::services::{telegram, youtube};
@@ -108,7 +109,7 @@ pub async fn secret_exists(name: String) -> Result<bool, SecretError> {
 
 #[tauri::command]
 pub async fn secret_delete(name: String) -> Result<(), SecretError> {
-    secrets::delete(&name)
+    secrets::delete_from_webview(&name)
 }
 
 /// Reads a JSON document (memory, profile, goals, protocols). `null` when
@@ -205,40 +206,89 @@ pub async fn telegram_send(text: String) -> Result<(), String> {
     telegram::send(&text).await
 }
 
+fn browser_opener(app: &AppHandle) -> impl FnOnce(&str) -> Result<(), String> {
+    let app = app.clone();
+    move |url| {
+        app.opener()
+            .open_url(url, None::<&str>)
+            .map_err(|error| format!("could not open the browser: {error}"))
+    }
+}
+
 #[tauri::command]
-pub async fn oauth_status(provider: Provider) -> Result<oauth::Status, OAuthError> {
-    oauth::status(provider)
+pub async fn spotify_status() -> Result<oauth::Status, OAuthError> {
+    oauth::spotify_status()
 }
 
 /// Opens the consent page in the system browser and waits for the sign-in.
 #[tauri::command]
-pub async fn oauth_connect(
+pub async fn spotify_connect(
     app: AppHandle,
     cache: State<'_, TokenCache>,
-    provider: Provider,
 ) -> Result<(), OAuthError> {
-    oauth::connect(provider, &cache, |url| {
-        app.opener()
-            .open_url(url, None::<&str>)
-            .map_err(|error| format!("could not open the browser: {error}"))
-    })
-    .await
+    oauth::spotify_connect(&cache, browser_opener(&app)).await
 }
 
 #[tauri::command]
-pub async fn oauth_disconnect(
-    cache: State<'_, TokenCache>,
-    provider: Provider,
-) -> Result<(), OAuthError> {
-    oauth::disconnect(provider, &cache)
+pub async fn spotify_disconnect(cache: State<'_, TokenCache>) -> Result<(), OAuthError> {
+    oauth::spotify_disconnect(&cache)
 }
 
+#[tauri::command]
+pub async fn google_accounts(
+    accounts: State<'_, GoogleAccounts>,
+) -> Result<Vec<AccountView>, OAuthError> {
+    // Earlier builds kept one unnamed Google token; it is no longer used.
+    secrets::delete("google_refresh_token")?;
+    accounts.list()
+}
+
+/// Adds an account, or signs one in again when `login_hint` names it.
+#[tauri::command]
+pub async fn google_connect(
+    app: AppHandle,
+    cache: State<'_, TokenCache>,
+    accounts: State<'_, GoogleAccounts>,
+    login_hint: Option<String>,
+) -> Result<Connected, OAuthError> {
+    accounts
+        .connect(&cache, login_hint.as_deref(), browser_opener(&app))
+        .await
+}
+
+#[tauri::command]
+pub async fn google_disconnect(
+    cache: State<'_, TokenCache>,
+    accounts: State<'_, GoogleAccounts>,
+    id: String,
+) -> Result<(), OAuthError> {
+    accounts.disconnect(&cache, &id)
+}
+
+#[tauri::command]
+pub async fn google_account_update(
+    accounts: State<'_, GoogleAccounts>,
+    id: String,
+    alias: Option<String>,
+    make_default: bool,
+) -> Result<(), OAuthError> {
+    accounts.update(&id, alias.as_deref(), make_default)
+}
+
+/// A short-lived access token. Google needs the id of the account.
 #[tauri::command]
 pub async fn oauth_access_token(
     cache: State<'_, TokenCache>,
+    accounts: State<'_, GoogleAccounts>,
     provider: Provider,
+    account: Option<String>,
 ) -> Result<String, OAuthError> {
-    oauth::access_token(provider, &cache).await
+    match (provider, account) {
+        (Provider::Google, Some(id)) => accounts.access_token(&cache, &id).await,
+        (Provider::Spotify, None) => oauth::spotify_access_token(&cache).await,
+        (Provider::Google, None) => Err(oauth::failed("say which Google account to use")),
+        (Provider::Spotify, Some(_)) => Err(oauth::failed("Spotify has a single account")),
+    }
 }
 
 #[tauri::command]

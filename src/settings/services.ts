@@ -2,6 +2,9 @@
 import { DISCORD_WEBHOOK } from "../tools/builtin/unified-communications";
 import type { OAuthProvider } from "../tools/types";
 
+/** Mirrors `MAX_ACCOUNTS` in `google_accounts.rs`. */
+export const MAX_GOOGLE_ACCOUNTS = 5;
+
 export type ServiceSecret =
   | "openrouter_api_key"
   | "deepseek_api_key"
@@ -68,7 +71,7 @@ export const SERVICE_GROUPS: readonly ServiceGroup[] = [
   },
   {
     title: "Google (Gmail and Calendar)",
-    hint: "Needs your own OAuth client of type “Desktop app”, with the Gmail and Calendar APIs enabled.",
+    hint: "Needs your own OAuth client of type “Desktop app”, with the Gmail and Calendar APIs enabled. One client serves all your accounts.",
     oauth: "google",
     fields: [
       { secret: "google_client_id", label: "Client ID" },

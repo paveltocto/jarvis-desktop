@@ -3,6 +3,7 @@
 //! CORS rules block, lives here.
 
 pub mod browser;
+pub mod google_accounts;
 pub mod oauth;
 pub mod system_stats;
 pub mod telegram;

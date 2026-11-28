@@ -10,7 +10,7 @@ import type {
   AccountsApi,
   BrowserRequest,
   FilesApi,
-  OAuthProvider,
+  GoogleAccount,
   ProcessSort,
   ReadableSecret,
   Reminder,
@@ -62,14 +62,24 @@ export const files: FilesApi = {
 };
 
 export const accounts: AccountsApi & {
-  status(provider: OAuthProvider): Promise<{ configured: boolean; connected: boolean }>;
-  connect(provider: OAuthProvider): Promise<undefined>;
-  disconnect(provider: OAuthProvider): Promise<undefined>;
+  spotifyStatus(): Promise<{ configured: boolean; connected: boolean }>;
+  spotifyConnect(): Promise<undefined>;
+  spotifyDisconnect(): Promise<undefined>;
+  /** Adds an account, or signs one in again when `loginHint` is its email. */
+  googleConnect(loginHint: string | null): Promise<{ account: GoogleAccount; isNew: boolean }>;
+  googleDisconnect(id: string): Promise<undefined>;
+  googleUpdate(id: string, alias: string | null, makeDefault: boolean): Promise<undefined>;
 } = {
-  accessToken: (provider) => invoke<string>("oauth_access_token", { provider }),
-  status: (provider) => invoke("oauth_status", { provider }),
-  connect: (provider) => invoke<undefined>("oauth_connect", { provider }),
-  disconnect: (provider) => invoke<undefined>("oauth_disconnect", { provider }),
+  accessToken: (provider, accountId) =>
+    invoke<string>("oauth_access_token", { provider, account: accountId ?? null }),
+  googleAccounts: () => invoke<GoogleAccount[]>("google_accounts"),
+  spotifyStatus: () => invoke("spotify_status"),
+  spotifyConnect: () => invoke<undefined>("spotify_connect"),
+  spotifyDisconnect: () => invoke<undefined>("spotify_disconnect"),
+  googleConnect: (loginHint) => invoke("google_connect", { loginHint }),
+  googleDisconnect: (id) => invoke<undefined>("google_disconnect", { id }),
+  googleUpdate: (id, alias, makeDefault) =>
+    invoke<undefined>("google_account_update", { id, alias, makeDefault }),
 };
 
 export const messaging = {

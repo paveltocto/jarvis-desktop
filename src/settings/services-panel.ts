@@ -2,33 +2,22 @@
  * Draws Settings › Services. Stored values are never read back: the panel
  * only knows whether each one exists.
  */
-import type { OAuthProvider } from "../tools/types";
+import { button } from "./button";
+import { GoogleAccountsList, type GoogleAccountsBackend } from "./google-accounts-list";
 import { SERVICE_GROUPS, serviceProblem, type ServiceSecret } from "./services";
 
-export interface ServicesBackend {
+export interface ServicesBackend extends GoogleAccountsBackend {
   exists(secret: ServiceSecret): Promise<boolean>;
   set(secret: ServiceSecret, value: string): Promise<unknown>;
   delete(secret: ServiceSecret): Promise<unknown>;
-  status(provider: OAuthProvider): Promise<{ configured: boolean; connected: boolean }>;
-  connect(provider: OAuthProvider): Promise<unknown>;
-  disconnect(provider: OAuthProvider): Promise<unknown>;
+  spotifyStatus(): Promise<{ configured: boolean; connected: boolean }>;
+  spotifyConnect(): Promise<unknown>;
+  spotifyDisconnect(): Promise<unknown>;
 }
 
 export interface ServicesMessages {
   status(text: string): void;
   error(text: string): void;
-}
-
-function button(label: string, className: string, run: () => Promise<void>): HTMLButtonElement {
-  const element = document.createElement("button");
-  element.type = "button";
-  element.className = className;
-  element.textContent = label;
-  element.addEventListener("click", () => {
-    element.disabled = true;
-    void run().finally(() => (element.disabled = false));
-  });
-  return element;
 }
 
 export class ServicesPanel {
@@ -72,7 +61,12 @@ export class ServicesPanel {
     hint.className = "muted small";
     hint.textContent = group.hint;
     section.append(title, hint, ...group.fields.map((field) => this.#field(field)));
-    if (group.oauth) section.append(this.#account(group.title, group.oauth));
+    if (group.oauth === "spotify") section.append(this.#spotifyAccount());
+    if (group.oauth === "google") {
+      const list = new GoogleAccountsList(this.backend, this.messages, () => this.save());
+      section.append(list.element);
+      this.#refreshers.push(() => list.refresh());
+    }
     return section;
   }
 
@@ -110,7 +104,8 @@ export class ServicesPanel {
     return wrapper;
   }
 
-  #account(name: string, provider: OAuthProvider): HTMLElement {
+  #spotifyAccount(): HTMLElement {
+    const name = "Spotify";
     const row = document.createElement("div");
     row.className = "service-account";
     const state = document.createElement("span");
@@ -119,7 +114,7 @@ export class ServicesPanel {
       try {
         await this.save();
         this.messages.status("Finish signing in in your browser…");
-        await this.backend.connect(provider);
+        await this.backend.spotifyConnect();
         await this.refresh();
         this.messages.status(`${name} connected.`);
       } catch (error) {
@@ -128,7 +123,7 @@ export class ServicesPanel {
     });
     const disconnect = button("Disconnect", "text-button danger", async () => {
       try {
-        await this.backend.disconnect(provider);
+        await this.backend.spotifyDisconnect();
         await this.refresh();
         this.messages.status(`${name} disconnected.`);
       } catch (error) {
@@ -137,7 +132,7 @@ export class ServicesPanel {
     });
     row.append(state, disconnect, connect);
     this.#refreshers.push(async () => {
-      const { connected } = await this.backend.status(provider);
+      const { connected } = await this.backend.spotifyStatus();
       state.textContent = connected ? "Connected" : "Not connected";
       disconnect.hidden = !connected;
       connect.textContent = connected ? "Reconnect…" : "Connect…";

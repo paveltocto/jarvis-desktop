@@ -1,11 +1,9 @@
 /** The parts of the Gmail REST API the tools use. */
 import { requestJson } from "../net/json-api";
-import type { ToolContext } from "../tools/types";
+import type { GoogleClient } from "./accounts";
 
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_BODY_CHARS = 4_000;
-
-type Client = Pick<ToolContext, "fetch" | "accounts">;
 
 interface Part {
   mimeType?: string;
@@ -28,8 +26,8 @@ export interface MailSummary {
   snippet: string;
 }
 
-async function call<T>(client: Client, path: string, body?: unknown): Promise<T | null> {
-  const token = await client.accounts.accessToken("google");
+async function call<T>(client: GoogleClient, path: string, body?: unknown): Promise<T | null> {
+  const token = await client.accounts.accessToken("google", client.accountId);
   return requestJson<T>(client.fetch, `${API}${path}`, {
     service: "Gmail",
     token,
@@ -56,7 +54,7 @@ function summary(message: Message): MailSummary {
 
 /** Newest messages matching a Gmail search, such as `is:unread in:inbox`. */
 export async function searchMail(
-  client: Client,
+  client: GoogleClient,
   query: string,
   count: number,
 ): Promise<MailSummary[]> {
@@ -90,7 +88,7 @@ function plainText(part: Part): string | null {
 }
 
 export async function readMail(
-  client: Client,
+  client: GoogleClient,
   id: string,
 ): Promise<MailSummary & { body: string }> {
   const message = await call<Message>(client, `/messages/${encodeURIComponent(id)}?format=full`);
@@ -135,7 +133,7 @@ export function rawMessage(to: string, subject: string, body: string): string {
 }
 
 export async function sendMail(
-  client: Client,
+  client: GoogleClient,
   to: string,
   subject: string,
   body: string,

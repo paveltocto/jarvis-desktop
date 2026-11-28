@@ -1,12 +1,11 @@
 /** The parts of the Google Calendar REST API the tools use (primary calendar). */
 import { InvalidInput } from "../data/records";
 import { requestJson } from "../net/json-api";
-import type { ToolContext } from "../tools/types";
+import type { GoogleAccount } from "../tools/types";
+import type { GoogleClient } from "./accounts";
 
 const API = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const HOUR_MS = 60 * 60 * 1000;
-
-type Client = Pick<ToolContext, "fetch" | "accounts">;
 
 export interface EventTime {
   /** All-day events. */
@@ -31,12 +30,12 @@ export interface NewEvent {
 }
 
 async function call<T>(
-  client: Client,
+  client: GoogleClient,
   path: string,
   method: "GET" | "POST" | "DELETE" = "GET",
   body?: unknown,
 ): Promise<T | null> {
-  const token = await client.accounts.accessToken("google");
+  const token = await client.accounts.accessToken("google", client.accountId);
   return requestJson<T>(client.fetch, `${API}${path}`, {
     service: "Google Calendar",
     token,
@@ -45,7 +44,11 @@ async function call<T>(
   });
 }
 
-export async function listEvents(client: Client, from: Date, to: Date): Promise<CalendarEvent[]> {
+export async function listEvents(
+  client: GoogleClient,
+  from: Date,
+  to: Date,
+): Promise<CalendarEvent[]> {
   const params = new URLSearchParams({
     timeMin: from.toISOString(),
     timeMax: to.toISOString(),
@@ -56,17 +59,17 @@ export async function listEvents(client: Client, from: Date, to: Date): Promise<
   return (await call<{ items?: CalendarEvent[] }>(client, `?${params}`))?.items ?? [];
 }
 
-export async function getEvent(client: Client, id: string): Promise<CalendarEvent> {
+export async function getEvent(client: GoogleClient, id: string): Promise<CalendarEvent> {
   const event = await call<CalendarEvent>(client, `/${encodeURIComponent(id)}`);
   if (!event) throw new Error("Google Calendar sent no event.");
   return event;
 }
 
-export async function createEvent(client: Client, event: NewEvent): Promise<void> {
+export async function createEvent(client: GoogleClient, event: NewEvent): Promise<void> {
   await call(client, "", "POST", event);
 }
 
-export async function deleteEvent(client: Client, id: string): Promise<void> {
+export async function deleteEvent(client: GoogleClient, id: string): Promise<void> {
   await call(client, `/${encodeURIComponent(id)}`, "DELETE");
 }
 
@@ -83,9 +86,9 @@ export function describeWhen(time: EventTime | undefined): string {
   });
 }
 
-export function describeEvent(event: CalendarEvent): string {
+export function describeEvent(account: GoogleAccount, event: CalendarEvent): string {
   const place = event.location ? ` at ${event.location}` : "";
-  return `- ${describeWhen(event.start)}: ${event.summary || "(no title)"}${place} [event_id ${event.id}]`;
+  return `- ${describeWhen(event.start)}: ${event.summary || "(no title)"}${place} [account ${account.email}, event_id ${event.id}]`;
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;

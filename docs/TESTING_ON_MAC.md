@@ -100,7 +100,14 @@ cd src-tauri && cargo test live_ -- --ignored
 
 ### Accounts (Settings › Services)
 
-- [ ] Google: create an OAuth client of type **Desktop app**, enable the Gmail and Calendar APIs, add yourself as a test user, then **Connect…**. Ask for unread email and today's events.
+- [ ] Google: create an OAuth client of type **Desktop app**, enable the Gmail and Calendar APIs, add each of your addresses as a test user, then **Add account…** and tick every permission. Ask for unread email and today's events.
+- [ ] Add a second account: Google shows its account chooser, and both appear with their own address.
+- [ ] With two accounts, "¿Tengo correo nuevo?", "¿Qué tengo hoy?" and the morning brief cover both and say which account each result is from. "Solo el trabajo" (after giving that account the short name) covers one.
+- [ ] With no default, "envía un correo a …" makes JARVIS ask which account. After choosing **Default for sending** it uses that one, and "envíalo desde personal" uses the other. The question in the window names the account, and the email arrives from it.
+- [ ] **Reconnect…** on one account but choose the other in the browser: Settings says which one you signed in as.
+- [ ] Reconnect leaving Calendar unticked: the account shows "Not allowed: calendar".
+- [ ] Remove one account's access at https://myaccount.google.com/permissions, restart JARVIS, and ask for email: that account is reported as not available and the other still answers.
+- [ ] The short names and the default survive a restart. **Disconnect** removes only that account.
 - [ ] Sending an email and creating or deleting an event show a question in the window; nothing happens on **Cancel**.
 - [ ] Spotify: create an app with the redirect URI `http://127.0.0.1:43821/callback`, **Connect…**, then play, pause, skip and set the volume (Premium).
 - [ ] OpenRouter or DeepSeek: "Pregúntale a DeepSeek …".
